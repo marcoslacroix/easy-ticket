@@ -3,6 +3,7 @@ const { sequelize } = require('../config/database');
 const Event = require('./event'); 
 const User = require("../models/user");
 const Lots = require("../models/lots");
+const Company = require("../models/company");
 
 const Ticket = sequelize.define('Ticket', {
     id: {
@@ -37,6 +38,10 @@ const Ticket = sequelize.define('Ticket', {
     lots_id: {
       type: DataTypes.INTEGER,
       allowNull: false
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     }
   }, 
   {
@@ -65,5 +70,11 @@ const Ticket = sequelize.define('Ticket', {
     foreignKey: 'owner_user_id',
     onDelete: 'CASCADE',
   });
+
+  Ticket.belongsTo(Company, {
+    foreignKey: 'company_id',
+    onDelete: 'CASCADE',
+  });
+
   
   module.exports = Ticket;
