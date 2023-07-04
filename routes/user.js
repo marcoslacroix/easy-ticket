@@ -3,6 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const UtilToken = require("../util/utilToken");
 const User = require("../models/user");
+const { sequelize } = require('../config/database');
 const UserDocument = require("../models/user_document");
 const UserPhone = require("../models/user_phone");
 const UtilUser = require("../util/utilUser");
@@ -22,14 +23,16 @@ const createUserSchema = Joi.object({
     }).required(),
     phone: Joi.object({
       areaCode: Joi.string().required(),
-      type: Joi.string().required,
-      country: Joi.string().required,
+      type: Joi.string().required(),
+      country: Joi.string().required(),
       number: Joi.string().required()
     }).required()
 });
 
 router.post("/", async function(req, res) {
+  let transaction;
   try {
+    transaction = await sequelize.transaction();
     const { error, value } = createUserSchema.validate(req.body);
     if (error) {
       throw new Error(error.details[0].message);
@@ -38,7 +41,7 @@ router.post("/", async function(req, res) {
     const { email, password, name, lastname, document, phone } = value;
 
     let userDocumentWithoutSpecialFields = document.value.replace(/[./]/g, "");
-    let userDocument = await UtilDocument.findByValue(userDocumentWithoutSpecialFields, res);
+    let userDocument = await UtilDocument.findByValue(userDocumentWithoutSpecialFields);
     if (userDocument) {
       throw new Error(`Identificador: ${userDocumentWithoutSpecialFields} já registrado`);
     }
@@ -60,13 +63,13 @@ router.post("/", async function(req, res) {
       name,
       created_on: new Date(),
       last_name: lastname
-    });
+    }, { transaction });
 
     userDocument = await UserDocument.create({
       type: document.type,
       value: userDocumentWithoutSpecialFields,
       user_id: user.id
-    });
+    }, { transaction });
 
     await UserPhone.create({
       area_code: phone.areaCode,
@@ -74,10 +77,14 @@ router.post("/", async function(req, res) {
       type: phone.type,
       country: phone.country,
       user_id: user.id
-    });
+    }, { transaction });
 
+    await transaction.commit(); 
     res.status(200).json({ message: "Usuário criado." });
   } catch (error) {
+    if (transaction) {
+      await transaction.rollback();
+    }
     console.error(error);
     res.status(400).json({ error: error.message });
   }
@@ -90,7 +97,9 @@ const updatePasswordSchema = Joi.object({
 });
 
 router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(req, res) {
+  let transaction;
   try {
+    transaction = await sequelize.transaction();
     const decoded = UtilJsonWebToken.decodeToken(req);
     const user = await UtilUser.getUserByEmail(decoded.email);
     if (!user) {
@@ -113,9 +122,13 @@ router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(re
     const encryptPassword = await UtilToken.encryptPassword(value.newPassword);
     await user.update({
       password: encryptPassword
-    });
+    }, transaction );
+    await transaction.commit(); 
     res.status(200).json({message: "Senha alterada com sucesso!"});
   } catch(error) {
+    if (transaction) {
+      await transaction.rollback();
+    }
     console.error(error);
     res.status(400).json({ error: error.message });
   }
@@ -123,7 +136,9 @@ router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(re
 });
 
 router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
+  let transaction;
   try {
+    transaction = await sequelize.transaction();
     const decoded = UtilJsonWebToken.decodeToken(req);
     const user = await UtilUser.getUserByEmail(decoded.email);
     if (!user) {
@@ -133,25 +148,34 @@ router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     await user.update({
       name: name,
       last_name: lastname
-    });
+    }, transaction);
 
+    await transaction.commit(); 
     res.json({ message: "Perfil atualizado." });
   } catch (error) {
+    if (transaction) {
+      await transaction.rollback();
+    }
     console.error(error);
     res.status(400).json({ message: error.message });
   }
 });
 
 router.delete("/", UtilJsonWebToken.verifyToken, async (req, res) => {
+  let transaction;
   try {
     const decoded = UtilJsonWebToken.decodeToken(req);
     const user = await UtilUser.getUserByEmail(decoded.email);
     if (!user) {
       throw new Error("Usuário não encontrado")
     }
-    await UtilUser.deleteById(user.id);
+    await UtilUser.deleteById(user.id, transaction);
+    await transaction.commit(); 
     res.json({ message: 'Usuário excluído com sucesso' });
   } catch (error) {
+    if (transaction) {
+      await transaction.rollback();
+    }
     res.status(400).json({ error: error.message});
   }
 });

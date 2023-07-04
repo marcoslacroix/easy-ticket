@@ -1,6 +1,7 @@
 const {DataTypes} = require("sequelize");
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 const Event = require('./event'); 
+const User = require("../models/user");
 
 const Ticket = sequelize.define('Ticket', {
     id: {
@@ -17,13 +18,21 @@ const Ticket = sequelize.define('Ticket', {
       allowNull: false,
     },
     event_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-      },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    owner_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    reserved_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    }
   }, 
   {
       freezeTableName: true,
@@ -34,6 +43,16 @@ const Ticket = sequelize.define('Ticket', {
 
   Ticket.belongsTo(Event, {
     foreignKey: 'event_id',
+    onDelete: 'CASCADE',
+  });
+
+  Ticket.belongsTo(User, {
+    foreignKey: 'reserved_user_id',
+    onDelete: 'CASCADE',
+  });
+
+  Ticket.belongsTo(User, {
+    foreignKey: 'owner_user_id',
     onDelete: 'CASCADE',
   });
   

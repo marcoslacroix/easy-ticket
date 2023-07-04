@@ -1,6 +1,6 @@
 
 const jwt = require('jsonwebtoken');
-const UtilJsonWebToken = require("../util/utilJsonWebToken");
+require("../util/utilJsonWebToken");
 
 function decodeToken(req) {
     const token = getTokenFromHeader(req).replace('Bearer ', '');

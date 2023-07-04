@@ -16,6 +16,20 @@ async function findAllByIds(ids) {
     }
 }
 
+async function findOneById(id) {
+  try {
+      return await Ticket.findOne({
+        where: {
+          id: id
+        }
+      });
+  } catch (error) {
+      console.error('Erro na busca do ingresso: ', error);
+      throw error;
+  }
+}
+
 module.exports = {
-  findAllByIds
+  findAllByIds,
+  findOneById
 }

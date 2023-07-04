@@ -17,11 +17,11 @@ function getCompleteName(user) {
   return user.name + " " + user.last_name
 }
 
-async function deleteById(id) {
+async function deleteById(id, transaction) {
   await User.destroy({
     where: {
       id: id
-    }
+    }, transaction
   });
 }
 

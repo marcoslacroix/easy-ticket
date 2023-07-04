@@ -1,5 +1,6 @@
-const {DataTypes} = require("sequelize");
-const sequelize = require('../config/database');
+const { DataTypes } = require("sequelize");
+const { sequelize } = require('../config/database');
+const User = require("../models/user");
 
 const Order = sequelize.define('Order', {
     id: {
@@ -9,6 +10,10 @@ const Order = sequelize.define('Order', {
     },
     created_on: {
       type: DataTypes.DATE,
+      allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     response: {
@@ -21,6 +26,12 @@ const Order = sequelize.define('Order', {
       timestamps: false,
       tableName: 'order'
   }
-  );
+);
+
+Order.belongsTo(User, {
+  foreignKey: 'user_id',
+  onDelete: 'CASCADE',
+});
+
 
 module.exports = Order;

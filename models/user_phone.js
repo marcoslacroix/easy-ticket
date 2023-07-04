@@ -1,6 +1,7 @@
 const {DataTypes} = require("sequelize");
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 const User = require('./user'); 
+const PhoneTypeEnum = require("../enum/PhoneTypeEnum");
 
 const UserPhone = sequelize.define('UserPhone', {
     id: {
@@ -21,8 +22,15 @@ const UserPhone = sequelize.define('UserPhone', {
       allowNull: false,
     },
     type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.ENUM(...Object.values(PhoneTypeEnum)),
+        allowNull: false,
+        defaultValue: PhoneTypeEnum.MOBILE,
+        validate: {
+            isIn: {
+                args: [Object.values(PhoneTypeEnum)],
+                msg: 'Invalid status',
+            },
+        }
     },
     user_id: {
         type: DataTypes.INTEGER,
