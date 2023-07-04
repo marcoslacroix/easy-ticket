@@ -2,6 +2,7 @@ const {DataTypes} = require("sequelize");
 const { sequelize } = require('../config/database');
 const Event = require('./event'); 
 const User = require("../models/user");
+const Lots = require("../models/lots");
 
 const Ticket = sequelize.define('Ticket', {
     id: {
@@ -32,6 +33,10 @@ const Ticket = sequelize.define('Ticket', {
     reserved_user_id: {
       type: DataTypes.INTEGER,
       allowNull: true
+    },
+    lots_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false
     }
   }, 
   {
@@ -43,6 +48,11 @@ const Ticket = sequelize.define('Ticket', {
 
   Ticket.belongsTo(Event, {
     foreignKey: 'event_id',
+    onDelete: 'CASCADE',
+  });
+
+  Ticket.belongsTo(Lots, {
+    foreignKey: 'lots_id',
     onDelete: 'CASCADE',
   });
 
