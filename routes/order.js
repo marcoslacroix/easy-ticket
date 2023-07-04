@@ -17,28 +17,24 @@ const TicketStatusEnum = require("../enum/TicketStatusEnum");
 const queue = require("../queue/queue");
 
 router.post("/create-and-pay" , UtilJsonWebToken.verifyToken, async function (req, res) {
-  let transaction;
   try {
-    transaction = await sequelize.transaction();
-    const decoded = UtilJsonWebToken.decodeToken(req);
-    const user = await UtilUser.getUserByEmail(decoded.email);
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
-
-    const dataWithPayment = {
-      "reference_id": "ex-00001",
-      "chargers": chargers
-  }
+    await sequelize.transaction(async (t1) => {
+      const decoded = UtilJsonWebToken.decodeToken(req);
+      const user = await UtilUser.getUserByEmail(decoded.email);
+      if (!user) {
+        throw new Error("Usuário não encontrado")
+      }
   
-    PagSeguro.createOrder(dataWithPayment).then(order => {
-      res.status(200).json({message: "Compra realizada com sucesso"});
+      const dataWithPayment = {
+        "reference_id": "ex-00001",
+        "chargers": chargers
+      }
+    
+      PagSeguro.createOrder(dataWithPayment).then(order => {
+        res.status(200).json({message: "Compra realizada com sucesso"});
+      });
     });
-    await transaction.commit(); 
   } catch (error) {
-    if ( transaction ) {
-      await transaction.rollback();
-    } 
     res.status(400).json({message: error.message});
   }
 });
@@ -102,225 +98,213 @@ const paySchema = Joi.object({
 });
 
 router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
-  let transaction;
   try {
-    transaction = await sequelize.transaction();
-    const {error, value} = paySchema.validate(req.body);
-    const decoded = UtilJsonWebToken.decodeToken(req);
-    const user = await UtilUser.getUserByEmail(decoded.email);
-    if (error) {
-      throw new Error(error.details[0].message);
-    }
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
-
-    const queryParams = req.query;
-    const orderId = queryParams.orderId;
-    const orderPagSeguro = await PagSeguro.getOrder(orderId);
-    if (orderPagSeguro.data.charges) {
-      for (const charge of orderPagSeguro.data.charges) {
-        if (charge.status === TicketStatusEnum.PAID)
-        throw new Error("Já foi realizado o pagamento desse pedido.");
+    await sequelize.transaction(async (t1) => {
+      const {error, value} = paySchema.validate(req.body);
+      const decoded = UtilJsonWebToken.decodeToken(req);
+      const user = await UtilUser.getUserByEmail(decoded.email);
+      if (error) {
+        throw new Error(error.details[0].message);
       }
-    }
-
-    for (const item of orderPagSeguro.data.items) {
-      const ticketStatus = await TicketStatus.findOne({
-        where: {
-          ticket_id: parseInt(item.reference_id)
-        },
-        order: [['created_on', 'DESC']],
-        limit: 1
-      });
-
-      const tenMinutesLater = new Date(ticketStatus.created_on.getTime() + 10 * 60000);
-      const now = new Date();
-
-      if (now > tenMinutesLater || ticketStatus.status != TicketStatusEnum.PENDING) {
-        throw new Error("Pedido expirado favor criar um novo.");
+      if (!user) {
+        throw new Error("Usuário não encontrado")
       }
-
-    }
-
-    const payload = {
-      charges: [
-        {
-          reference_id: "referencia da cobranca",
-          description: "descricao da cobranca",
-          amount: {
-            value: value.amount.value,
-            currency: value.amount.currency
-          },
-          payment_method: {
-            type: value.payment_method.type,
-            installments: value.payment_method.installments,
-            capture: true,
-            card: {
-              number: value.payment_method.card.number,
-              exp_month: value.payment_method.card.exp_month,
-              exp_year: value.payment_method.card.exp_year,
-              security_code: value.payment_method.card.security_code,
-              holder: {
-                name: value.payment_method.card.holder.name
-              },
-              store: false
-            },
-            splits: {
-              method: "FIXED",
-              receivers: [
-                  {
-                      account: {
-                          id: process.env.EASY_TICKET_PAGSEGURO_ACCOUNT_ID
-                      },
-                      amount: {
-                          value: 20
-                      }
-                  },
-                  {
-                      account: {
-                          id: "ACCO_22222222-ABCD-2222-AABB-AA22222222BB"
-                      },
-                      amount: {
-                          value: 80
-                      }
-                  }
-              ]
-          }
-          }
+  
+      const queryParams = req.query;
+      const orderId = queryParams.orderId;
+      if (!orderId) {
+        throw new Error("ID do pedido não enviado");
+      }
+      const orderPagSeguro = await PagSeguro.getOrder(orderId);
+      if (orderPagSeguro.data.charges) {
+        for (const charge of orderPagSeguro.data.charges) {
+          if (charge.status === TicketStatusEnum.PAID)
+          throw new Error("Já foi realizado o pagamento desse pedido.");
         }
-        
-      ]
-    };
-
-      /* todo adicionar no json split de pagamento
-      
-      "metadata": {
-            "Key": "value"
-        },
-      "notification_urls": [
-        "https://teste.site/testando"
-      ], */
-    const response = await PagSeguro.payOrder(orderId, payload);
-    response?.data?.charges?.forEach((charge) => {
-      delete charge.payment_method;
-    });
-
-    await Order.create({
-      response: response.data,
-      user_id: user.id,
-      created_on: new Date()
-    }, { transaction } );
-
-    const items = response.data.items;
-    for (const item of items) {
-      const ticketId = parseInt(item.reference_id);
-
-      await Ticket.update(
-        {
-          reserved_user_id: null,
-          owner_user_id: user.id
-        },
-        {
+      }
+  
+      for (const item of orderPagSeguro.data.items) {
+        const ticketStatus = await TicketStatus.findOne({
           where: {
-            id: ticketId
+            ticket_id: parseInt(item.reference_id)
           },
-        }, transaction
-      );
-
-      await TicketStatus.create({
-        status: TicketStatusEnum.PAID,
-        created_on: new Date(),
-        ticket_id: ticketId
-      }, { transaction } );
-
-    }
-
-    await transaction.commit(); 
-    res.status(200).json({message: "Pagamento realizado com sucesso"});
+          order: [['created_on', 'DESC']],
+          limit: 1
+        });
+  
+        const tenMinutesLater = new Date(ticketStatus.created_on.getTime() + 10 * 60000);
+        const now = new Date();
+  
+        if (now > tenMinutesLater || ticketStatus.status != TicketStatusEnum.PENDING) {
+          throw new Error("Pedido expirado favor criar um novo.");
+        }
+  
+      }
+  
+      const payload = {
+        charges: [
+          {
+            reference_id: "referencia da cobranca",
+            description: "descricao da cobranca",
+            amount: {
+              value: value.amount.value,
+              currency: value.amount.currency
+            },
+            payment_method: {
+              type: value.payment_method.type,
+              installments: value.payment_method.installments,
+              capture: true,
+              card: {
+                number: value.payment_method.card.number,
+                exp_month: value.payment_method.card.exp_month,
+                exp_year: value.payment_method.card.exp_year,
+                security_code: value.payment_method.card.security_code,
+                holder: {
+                  name: value.payment_method.card.holder.name
+                },
+                store: false
+              },
+              splits: {
+                method: "FIXED",
+                receivers: [
+                    {
+                        account: {
+                            id: process.env.EASY_TICKET_PAGSEGURO_ACCOUNT_ID
+                        },
+                        amount: {
+                            value: 20
+                        }
+                    },
+                    {
+                        account: {
+                            id: "ACCO_22222222-ABCD-2222-AABB-AA22222222BB"
+                        },
+                        amount: {
+                            value: 80
+                        }
+                    }
+                ]
+            }
+            }
+          }
+          
+        ]
+      };
+  
+        /* todo adicionar no json split de pagamento
+        
+        "metadata": {
+              "Key": "value"
+          },
+        "notification_urls": [
+          "https://teste.site/testando"
+        ], */
+      const response = await PagSeguro.payOrder(orderId, payload);
+      response?.data?.charges?.forEach((charge) => {
+        delete charge.payment_method;
+      });
+  
+      await Order.create({
+        response: response.data,
+        user_id: user.id,
+        created_on: new Date()
+      });
+  
+      const items = response.data.items;
+      for (const item of items) {
+        const ticketId = parseInt(item.reference_id);
+  
+        await Ticket.update(
+          {
+            reserved_user_id: null,
+            owner_user_id: user.id
+          },
+          {
+            where: {
+              id: ticketId
+            },
+          }
+        );
+  
+        await TicketStatus.create({
+          status: TicketStatusEnum.PAID,
+          created_on: new Date(),
+          ticket_id: ticketId
+        });
+  
+      }
+  
+      res.status(200).json({message: "Pagamento realizado com sucesso"});
+    });
   } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
     console.error(error);
     res.status(400).json({ message: error.message });
   }
 });
 
 router.post("/create", UtilJsonWebToken.verifyToken, async function (req, res) {
-  let transaction;
   try {
-    transaction = await sequelize.transaction();
-    const { ids } = req.body;
-    const decoded = UtilJsonWebToken.decodeToken(req);
-    const user = await UtilUser.getUserByEmail(decoded.email);
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
-    if (!ids) {
-      throw new Error("Nenhum ticket enviado");
-    }
-
-    const userDocument = await UtilDocument.findByUserId(user.id);
-    const {items, totalValue} = await getItems(ids);
-    const data = {
-      "reference_id": uuidv4(),
-      "customer": {
-        "name": UtilUser.getCompleteName(user),
-        "email": user.email,
-        "tax_id": userDocument.value,
-        "phones": await getPhones(user)
-      },
-      "items": items
-    }
-    const response = await PagSeguro.createOrder(data);
-    response.data?.charges?.forEach((charge) => {
-      delete charge.payment_method;
-    });
-    await Order.create({
-      response: response.data,
-      user_id: user.id,
-      created_on: new Date()
-    }, { transaction });
-
-    for (const id of ids) {
-
-      await Ticket.update(
-        {
-          reserved_user_id: user.id
+    await sequelize.transaction(async (t1) => {
+      const { ids } = req.body;
+      const decoded = UtilJsonWebToken.decodeToken(req);
+      const user = await UtilUser.getUserByEmail(decoded.email);
+      if (!ids) {
+        throw new Error("Nenhum ticket enviado");
+      }
+  
+      const userDocument = await UtilDocument.findByUserId(user.id);
+      const {items, totalValue} = await getItems(ids);
+      const data = {
+        "reference_id": uuidv4(),
+        "customer": {
+          "name": UtilUser.getCompleteName(user),
+          "email": user.email,
+          "tax_id": userDocument.value,
+          "phones": await getPhones(user)
         },
-        {
-          where: {
-            id: id
+        "items": items
+      }
+      const response = await PagSeguro.createOrder(data);
+      response.data?.charges?.forEach((charge) => {
+        delete charge.payment_method;
+      });
+      await Order.create({
+        response: response.data,
+        user_id: user.id,
+        created_on: new Date()
+      });
+  
+      for (const id of ids) {
+  
+        await Ticket.update(
+          {
+            reserved_user_id: user.id
           },
-        },
-        transaction
-      );
-
-      const ticketStatus = await TicketStatus.create({
-        status: TicketStatusEnum.PENDING,
-        created_on: new Date(),
-        ticket_id: id
-      }, { transaction });
-
-      const payload = {
-        ticketId: id
-      };
-      
-      const jsonPayload = JSON.stringify(payload);
-      
-      // todo delay 15 min 900000
-      queue.publish("ticket-status", Buffer.from(jsonPayload), "200000");
-
-    }
-
-    await transaction.commit(); 
-    res.status(200).json({order: response.data.id, message: "Pedido criado"});
-
+          {
+            where: {
+              id: id
+            },
+          }
+        );
+  
+        await TicketStatus.create({
+          status: TicketStatusEnum.PENDING,
+          created_on: new Date(),
+          ticket_id: id
+        });
+  
+        const payload = {
+          ticketId: id
+        };
+        
+        const jsonPayload = JSON.stringify(payload);
+        
+        // todo delay 15 min 900000
+        queue.publish("ticket-status", Buffer.from(jsonPayload), "200000");
+      }
+      res.status(200).json({order: response.data.id, message: "Pedido criado"});
+    });
   } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
     if (error.response && error.response.data && error.response.data.error_messages) {
       const errorMessages = error.response.data.error_messages;
       res.status(400).json({ message: errorMessages });

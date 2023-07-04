@@ -1,5 +1,7 @@
 const { Sequelize } = require('sequelize');
-const conn = {};
+const { createNamespace } = require('cls-hooked');
+const namespace = createNamespace('sequelize-transaction');
+Sequelize.useCLS(namespace);
 
 const sequelize = new Sequelize('easy-ticket', 'root', 'live0102', {
   host: 'localhost',
@@ -8,7 +10,4 @@ const sequelize = new Sequelize('easy-ticket', 'root', 'live0102', {
   logging: false
 });
 
-conn.sequelize = sequelize;
-conn.Sequelize = Sequelize;
-
-module.exports = conn;
+module.exports = { sequelize };

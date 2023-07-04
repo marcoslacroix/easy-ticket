@@ -30,61 +30,41 @@ const createUserSchema = Joi.object({
 });
 
 router.post("/", async function(req, res) {
-  let transaction;
   try {
-    transaction = await sequelize.transaction();
-    const { error, value } = createUserSchema.validate(req.body);
-    if (error) {
-      throw new Error(error.details[0].message);
-    }
-
-    const { email, password, name, lastname, document, phone } = value;
-
-    let userDocumentWithoutSpecialFields = document.value.replace(/[./]/g, "");
-    let userDocument = await UtilDocument.findByValue(userDocumentWithoutSpecialFields);
-    if (userDocument) {
-      throw new Error(`Identificador: ${userDocumentWithoutSpecialFields} já registrado`);
-    }
-
-    let user = await UtilUser.getUserByEmail(email);
-    if (user) {
-      throw new Error(`Email: ${email} já cadastrado`);
-    }
-
-    const objectIsStrongPassword = UtilPassword.isStrongPassword(password);
-    if (!objectIsStrongPassword.isValid){
-      throw new Error(objectIsStrongPassword.messageError);
-    };
-
-    const encryptPassword = await UtilToken.encryptPassword(password);
-    user = await User.create({
-      email,
-      password: encryptPassword,
-      name,
-      created_on: new Date(),
-      last_name: lastname
-    }, { transaction });
-
-    userDocument = await UserDocument.create({
-      type: document.type,
-      value: userDocumentWithoutSpecialFields,
-      user_id: user.id
-    }, { transaction });
-
-    await UserPhone.create({
-      area_code: phone.areaCode,
-      number: phone.number,
-      type: phone.type,
-      country: phone.country,
-      user_id: user.id
-    }, { transaction });
-
-    await transaction.commit(); 
-    res.status(200).json({ message: "Usuário criado." });
+    await sequelize.transaction(async (t1) => {
+      const { error, value } = createUserSchema.validate(req.body);
+      validateSchemaDto(error);
+      const { email, password, name, lastname, document, phone } = value;
+      let userDocumentWithoutSpecialFields = document.value.replace(/[./]/g, "");
+      await UtilDocument.validateByValue(userDocumentWithoutSpecialFields);
+      await UtilUser.validateEmailIsRegistered(email);
+      validateStrongPassword(password)
+  
+      let user = await User.create({
+        email,
+        password: await UtilToken.encryptPassword(password),
+        name,
+        created_on: new Date(),
+        last_name: lastname
+      });
+  
+      await UserDocument.create({
+        type: document.type,
+        value: userDocumentWithoutSpecialFields,
+        user_id: user.id
+      });
+  
+      await UserPhone.create({
+        area_code: phone.areaCode,
+        number: phone.number,
+        type: phone.type,
+        country: phone.country,
+        user_id: user.id
+      });
+  
+      res.status(200).json({ message: "Usuário criado." });
+    });
   } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
     console.error(error);
     res.status(400).json({ error: error.message });
   }
@@ -96,39 +76,38 @@ const updatePasswordSchema = Joi.object({
   confirmPassword: Joi.string().required()
 });
 
-router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(req, res) {
-  let transaction;
-  try {
-    transaction = await sequelize.transaction();
-    const decoded = UtilJsonWebToken.decodeToken(req);
-    const user = await UtilUser.getUserByEmail(decoded.email);
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
-    const {error, value} = updatePasswordSchema.validate(req.body);
-    if (error) {
-      throw new Error(error.details[0].message);
-    }
-    if (!UtilToken.isPasswordMatch(value.oldPassword, user.password)) {
-      throw new Error("Senha antiga invalida");
-    }
-    if (value.newPassword != value.confirmPassword) {
-      throw new Error("As senhas devem ser iguais.");
-    }
-    const objectIsStrongPassword = UtilPassword.isStrongPassword(value.newPassword);
+function validateStrongPassword(password) {
+  const objectIsStrongPassword = UtilPassword.isStrongPassword(password);
     if (!objectIsStrongPassword.isValid){
       throw new Error(objectIsStrongPassword.messageError);
     };
-    const encryptPassword = await UtilToken.encryptPassword(value.newPassword);
-    await user.update({
-      password: encryptPassword
-    }, transaction );
-    await transaction.commit(); 
-    res.status(200).json({message: "Senha alterada com sucesso!"});
+}
+
+function validatePassword(value, user) {
+  UtilPassword.validateOldPassword(value.oldPassword, user.password);
+  UtilPassword.validaDifferentPassword(value.newPassword, value.confirmPassword);
+  validateStrongPassword(value.newPassword);
+}
+
+function validateSchemaDto(error) {
+  if (error) {
+    throw new Error(error.details[0].message);
+  }
+}
+router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(req, res) {
+  try {
+    await sequelize.transaction(async (t1) => {
+      const decoded = UtilJsonWebToken.decodeToken(req);
+      const user = await UtilUser.getUserById(decoded.userId);
+      const {error, value} = updatePasswordSchema.validate(req.body);
+      validateSchemaDto(error);
+      validatePassword(value, user);
+      await user.update({
+        password: await UtilToken.encryptPassword(value.newPassword)
+      });
+      res.status(200).json({message: "Senha alterada com sucesso!"});
+    });
   } catch(error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
     console.error(error);
     res.status(400).json({ error: error.message });
   }
@@ -136,46 +115,32 @@ router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(re
 });
 
 router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
-  let transaction;
   try {
-    transaction = await sequelize.transaction();
-    const decoded = UtilJsonWebToken.decodeToken(req);
-    const user = await UtilUser.getUserByEmail(decoded.email);
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
-    const { name, lastname } = req.body;
-    await user.update({
-      name: name,
-      last_name: lastname
-    }, transaction);
-
-    await transaction.commit(); 
-    res.json({ message: "Perfil atualizado." });
+    await sequelize.transaction(async (t1)=> {
+      const decoded = UtilJsonWebToken.decodeToken(req);
+      const user = await UtilUser.getUserByEmail(decoded.email);
+      const { name, lastname } = req.body;
+      await user.update({
+        name: name,
+        last_name: lastname
+      });
+      res.json({ message: "Usuário atualizado." });
+    });
   } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
     console.error(error);
     res.status(400).json({ message: error.message });
   }
 });
 
 router.delete("/", UtilJsonWebToken.verifyToken, async (req, res) => {
-  let transaction;
   try {
-    const decoded = UtilJsonWebToken.decodeToken(req);
-    const user = await UtilUser.getUserByEmail(decoded.email);
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
-    await UtilUser.deleteById(user.id, transaction);
-    await transaction.commit(); 
-    res.json({ message: 'Usuário excluído com sucesso' });
+    await sequelize.transaction(async (t1) => {
+      const decoded = UtilJsonWebToken.decodeToken(req);
+      const user = await UtilUser.getUserByEmail(decoded.email);
+      await UtilUser.deleteById(user.id, transaction);
+      res.json({ message: 'Usuário excluído com sucesso' });
+    });
   } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
     res.status(400).json({ error: error.message});
   }
 });
@@ -184,9 +149,6 @@ router.get('/get-user', UtilJsonWebToken.verifyToken, async (req, resp) => {
   try {
     const decoded = UtilJsonWebToken.decodeToken(req);
     const user = await UtilUser.getUserByEmail(decoded.email);
-    if (!user) {
-      throw new Error("Usuário não encontrado")
-    }
     resp.json(UserDto.parseUserDto(user));
   } catch (error) {
     res.status(400).json({ error: error.message});

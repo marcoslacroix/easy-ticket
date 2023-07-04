@@ -1,12 +1,17 @@
 const UserDocument = require('../models/user_document')
 
-async function findByValue(value) {
+async function validateByValue(value) {
     try {
-        return await UserDocument.findOne({
+        const userDocument = await UserDocument.findOne({
           where: {
             value: value
           }
         });
+
+        if (userDocument) {
+          throw new Error(`Identificador: ${userDocumentWithoutSpecialFields} já registrado`);
+        }
+      
     } catch (error) {
         console.error('Error finding document:', error);
         throw error;
@@ -27,6 +32,6 @@ async function findByUserId(userId) {
 }
 
 module.exports = {
-    findByValue,
+    validateByValue,
     findByUserId
 }

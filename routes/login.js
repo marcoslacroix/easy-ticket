@@ -11,7 +11,7 @@ router.post('/', async (req, res)  => {
     if (user) {
         const isPasswordMatch = await UtilToken.isPasswordMatch(password, user.password);
         if (email === user.email && isPasswordMatch) {
-          const token = UtilJsonWebToken.sign(email);
+          const token = UtilJsonWebToken.sign(user);
           res.json({ token: token });
           return;
         }

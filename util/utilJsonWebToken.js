@@ -29,8 +29,8 @@ function verifyToken(req, res, next) {
     });
 }
 
-function sign(email) {
-    return jwt.sign({ email: email }, process.env.SECRET_KEY);
+function sign(user) {
+    return jwt.sign({ email: user.email, userId: user.id }, process.env.SECRET_KEY);
 }
 
 function getTokenFromHeader(req) {

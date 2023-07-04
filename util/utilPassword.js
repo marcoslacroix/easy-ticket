@@ -34,5 +34,20 @@ function isStrongPassword(password) {
         messageError: ""
     };
   }
+function validateOldPassword(oldPassword, userPassword) {
+  if (!UtilToken.isPasswordMatch(oldPassword, userPassword)) {
+    throw new Error("Senha antiga invalida");
+  }
+}
 
-module.exports = {isStrongPassword}
+function validaDifferentPassword(newPassword, confirmPassword) {
+  if (value.newPassword != value.confirmPassword) {
+    throw new Error("As senhas devem ser iguais.");
+  }
+}
+
+module.exports = {
+  isStrongPassword,
+  validaDifferentPassword,
+  validateOldPassword
+}

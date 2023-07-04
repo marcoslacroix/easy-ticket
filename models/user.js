@@ -24,8 +24,8 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  company_id: {
-    type: DataTypes.INTEGER,
+  companies: {
+    type: DataTypes.JSON,
     allowNull: true,
   },
   email: {
@@ -33,6 +33,10 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true,
   },
+  roles: {
+    type: DataTypes.JSON,
+    allowNull: true
+  }
 }, 
 {
     freezeTableName: true,
@@ -40,12 +44,5 @@ const User = sequelize.define('User', {
     tableName: 'user'
 }
 );
-
-
-User.belongsTo(Company, {
-  foreignKey: 'company_id',
-  onDelete: 'CASCADE',
-});
-
 
 module.exports = User;
