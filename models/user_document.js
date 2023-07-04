@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require('../config/database');
+const DocumentTypeEnum = require("../enum/DocumentTypeEnum");
 const User = require('./user'); 
 
 const UserDocument = sequelize.define('UserDocument', {
@@ -9,8 +10,15 @@ const UserDocument = sequelize.define('UserDocument', {
       autoIncrement: true,
     },
     type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.ENUM(...Object.values(DocumentTypeEnum)),
+        allowNull: false,
+        defaultValue: DocumentTypeEnum.CPF,
+        validate: {
+            isIn: {
+                args: [Object.values(DocumentTypeEnum)],
+                msg: 'Invalid status',
+            },
+        }
     },
     value: {
       type: DataTypes.STRING,
