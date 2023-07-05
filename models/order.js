@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require('../config/database');
 const User = require("../models/user");
+const Company = require("../models/company");
 
 const Order = sequelize.define('Order', {
     id: {
@@ -32,6 +33,5 @@ Order.belongsTo(User, {
   foreignKey: 'user_id',
   onDelete: 'CASCADE',
 });
-
 
 module.exports = Order;

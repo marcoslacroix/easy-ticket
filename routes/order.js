@@ -16,29 +16,6 @@ const TicketStatus = require("../models/ticket_status");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
 const queue = require("../queue/queue");
 
-router.post("/create-and-pay" , UtilJsonWebToken.verifyToken, async function (req, res) {
-  try {
-    await sequelize.transaction(async (t1) => {
-      const decoded = UtilJsonWebToken.decodeToken(req);
-      const user = await UtilUser.getUserByEmail(decoded.email);
-      if (!user) {
-        throw new Error("Usuário não encontrado")
-      }
-  
-      const dataWithPayment = {
-        "reference_id": "ex-00001",
-        "chargers": chargers
-      }
-    
-      PagSeguro.createOrder(dataWithPayment).then(order => {
-        res.status(200).json({message: "Compra realizada com sucesso"});
-      });
-    });
-  } catch (error) {
-    res.status(400).json({message: error.message});
-  }
-});
-
 async function getPhones(user) {
   const userPhones = await UtilPhone.findAllByUserId(user.id);
   const phones = [];
@@ -72,6 +49,9 @@ async function getItems(ids) {
     }
     totalValue+= ticket.price;
     items.push(newItem);
+  }
+  if (items.length == 0) {
+    throw new Error("Nenhum ingresso encontrado");
   }
   return {items, totalValue}
 }
@@ -248,6 +228,7 @@ router.post("/create", UtilJsonWebToken.verifyToken, async function (req, res) {
       const { ids } = req.body;
       const decoded = UtilJsonWebToken.decodeToken(req);
       const user = await UtilUser.getUserByEmail(decoded.email);
+
       if (!ids) {
         throw new Error("Nenhum ticket enviado");
       }
@@ -264,6 +245,7 @@ router.post("/create", UtilJsonWebToken.verifyToken, async function (req, res) {
         },
         "items": items
       }
+
       const response = await PagSeguro.createOrder(data);
       response.data?.charges?.forEach((charge) => {
         delete charge.payment_method;

@@ -35,7 +35,7 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
         UtilUser.validateUserRoles(user, [RolesEnum.CREATE_COMPANY]);
 
         const { name, identifier, phone } = value;
-        const identifierWithoutSpecialFields = identifier.replace(/[./]/g, "");
+        const identifierWithoutSpecialFields = identifier.replace(/[./\s-]/g, "");
         await UtilCompany.validateByIdentifierOrName(identifierWithoutSpecialFields, name);
   
         const company = await Company.create({

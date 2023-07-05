@@ -35,7 +35,7 @@ router.post("/", async function(req, res) {
       const { error, value } = createUserSchema.validate(req.body);
       validateSchemaDto(error);
       const { email, password, name, lastname, document, phone } = value;
-      let userDocumentWithoutSpecialFields = document.value.replace(/[./]/g, "");
+      let userDocumentWithoutSpecialFields = document.value.replace(/[./\s-]/g, "");
       await UtilDocument.validateByValue(userDocumentWithoutSpecialFields);
       await UtilUser.validateEmailIsRegistered(email);
       validateStrongPassword(password)
