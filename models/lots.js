@@ -25,6 +25,10 @@ const Lots = sequelize.define('Lots', {
         type: DataTypes.DATE,
         allowNull: false,
     },
+    active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+    },
     company_id: {
       type: DataTypes.INTEGER,
       allowNull: false

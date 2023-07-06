@@ -15,6 +15,10 @@ const Company = sequelize.define('Company', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  image: {
+    type: DataTypes.BLOB,
+    allowNull: false,
+  },
   created_on: {
     type: DataTypes.DATE,
     allowNull: false,

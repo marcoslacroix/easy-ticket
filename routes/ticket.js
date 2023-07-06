@@ -57,6 +57,7 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
             created_on: new Date(),
             start_sales: lots.startSales,
             end_sales: lots.endSales,
+            active: true,
             event_id: _event.id
         });
 
