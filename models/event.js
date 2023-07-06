@@ -11,10 +11,30 @@ const Event = sequelize.define('Event', {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    data: {
+    period: {
       type: DataTypes.DATE,
       allowNull: false,
     },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    start: {
+      type: DataTypes.TIME,
+      allowNull: false
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    created_on: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    image: {
+      type: DataTypes.BLOB,
+      allowNull: false
+    }
   }, 
   {
       freezeTableName: true,

@@ -137,7 +137,7 @@ router.delete("/", UtilJsonWebToken.verifyToken, async (req, res) => {
     await sequelize.transaction(async (t1) => {
       const decoded = UtilJsonWebToken.decodeToken(req);
       const user = await UtilUser.getUserByEmail(decoded.email);
-      await UtilUser.deleteById(user.id, transaction);
+      await user.destroy();
       res.json({ message: 'Usuário excluído com sucesso' });
     });
   } catch (error) {

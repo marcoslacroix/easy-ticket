@@ -11,6 +11,10 @@ const Company = sequelize.define('Company', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  about: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   created_on: {
     type: DataTypes.DATE,
     allowNull: false,

@@ -9,21 +9,25 @@ const Lots = sequelize.define('Lots', {
       primaryKey: true,
       autoIncrement: true,
     },
-    description: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    company_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
     created_on: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    active: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false
+    description: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    start_sales: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    end_sales: {
+        type: DataTypes.DATE,
+        allowNull: false,
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false
     },
     event_id: {
         type: DataTypes.INTEGER,

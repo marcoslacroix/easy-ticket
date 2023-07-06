@@ -23,8 +23,8 @@ async function validateByIdentifierOrName(identifier, name) {
     }
 }
 
-function validaUserHasAccessToCompany(user, company) {
-    const hasAccess = user?.companies?.includes(company.id);
+function validaUserHasAccessToCompany(user, companyId) {
+    const hasAccess = user?.companies?.includes(companyId);
     if (!hasAccess) {
         throw new Error("Usuário não tem acesso a essa empresa")
     }

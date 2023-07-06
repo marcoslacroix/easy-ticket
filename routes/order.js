@@ -13,6 +13,7 @@ const UtilTicket = require("../util/utilTicket");
 const Ticket = require("../models/ticket");
 const { v4: uuidv4 } = require('uuid');
 const TicketStatus = require("../models/ticket_status");
+const Lots = require("../models/lots");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
 const queue = require("../queue/queue");
 
@@ -41,13 +42,19 @@ async function getItems(ids) {
     if (ticketStatus && TicketStatusEnum.AVAILABLE != ticketStatus.status ) {
       throw new Error(`Ingresso ${ticket.id} não disponível`);
     }
+    const _lots = await Lots.findOne({
+      where:  {
+        id: ticket.lots_id
+      }
+    });
+
     const newItem = {
       reference_id: ticket.id.toString(),
       name: ticket.name,
       quantity: 1,
-      unit_amount: ticket.price
+      unit_amount: _lots.price
     }
-    totalValue+= ticket.price;
+    totalValue+= _lots.price;
     items.push(newItem);
   }
   if (items.length == 0) {
@@ -196,6 +203,7 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
   
         await Ticket.update(
           {
+            sold: true,
             reserved_user_id: null,
             owner_user_id: user.id
           },

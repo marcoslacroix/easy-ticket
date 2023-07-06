@@ -15,17 +15,21 @@ const Ticket = sequelize.define('Ticket', {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     price: {
       type: DataTypes.DOUBLE,
       allowNull: false,
     },
-    event_id: {
-      type: DataTypes.INTEGER,
+    created_on: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    sold: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false
     },
     owner_user_id: {
       type: DataTypes.INTEGER,
@@ -38,10 +42,6 @@ const Ticket = sequelize.define('Ticket', {
     lots_id: {
       type: DataTypes.INTEGER,
       allowNull: false
-    },
-    company_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     }
   }, 
   {

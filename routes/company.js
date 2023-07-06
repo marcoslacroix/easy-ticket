@@ -2,23 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { sequelize } = require('../config/database');
+const UtilJsonWebToken = require("../util/utilJsonWebToken");
+
 const Company = require("../models/company");
 const CompanyPhone = require("../models/company_phone");
+const UtilUser = require("../util/utilUser");
 const UtilCompany = require("../util/utilCompany");
 const RolesEnum = require("../enum/RolesEnum");
-const UtilUser = require("../util/utilUser");
 const UtilCompanyPhone = require("../util/UtilCompanyPhone");
-const UtilJsonWebToken = require("../util/utilJsonWebToken");
 require('express-async-errors');
 
 const createCompanySchema = Joi.object({
-    name: Joi.string().required(),
-    identifier: Joi.string().required(),
-    phone: Joi.object({
-      areaCode: Joi.string().required(),
-      type: Joi.string().required(),
-      country: Joi.string().required(),
-      number: Joi.string().required()
+    company: Joi.object({
+        name: Joi.string().required(),
+        identifier: Joi.string().required(),
+        about: Joi.string().required(),
+        phone: Joi.object({
+            areaCode: Joi.string().required(),
+            type: Joi.string().required(),
+            country: Joi.string().required(),
+            number: Joi.string().required()
+        }).required()
     }).required()
 });
 
@@ -30,28 +34,29 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
           throw new Error(error.details[0].message);
         }
         const decoded = UtilJsonWebToken.decodeToken(req);
-        const user = await UtilUser.getUserById(decoded.userId);
+        let user = await UtilUser.getUserById(decoded.userId);
 
         UtilUser.validateUserRoles(user, [RolesEnum.CREATE_COMPANY]);
 
-        const { name, identifier, phone } = value;
-        const identifierWithoutSpecialFields = identifier.replace(/[./\s-]/g, "");
-        await UtilCompany.validateByIdentifierOrName(identifierWithoutSpecialFields, name);
+        const { company } = value;
+        const identifierWithoutSpecialFields = company.identifier.replace(/[./\s-]/g, "");
+        await UtilCompany.validateByIdentifierOrName(identifierWithoutSpecialFields, company.name);
   
-        const company = await Company.create({
-          name: name,
+        const _company = await Company.create({
+          name: company.name,
+          about: company.about,
           identifier: identifierWithoutSpecialFields,
           created_on: new Date()
         });
   
         await CompanyPhone.create({
-          area_code: phone.areaCode,
-          number: phone.number,
-          type: phone.type,
-          country: phone.country,
-          company_id: company.id
+          area_code: company.phone.areaCode,
+          number: company.phone.number,
+          type: company.phone.type,
+          country: company.phone.country,
+          company_id: _company.id
         });
-  
+
         res.status(200).json({ message: "Empresa criada." });
       });
     } catch (error) {
@@ -62,12 +67,14 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
 
 
 const updateCompanySchema = Joi.object({
-    name: Joi.string().required(),
-    phone: Joi.object({
-      areaCode: Joi.string().required(),
-      type: Joi.string().required(),
-      country: Joi.string().required(),
-      number: Joi.string().required()
+    company: Joi.object({
+        name: Joi.string().required(),
+        phone: Joi.object({
+          areaCode: Joi.string().required(),
+          type: Joi.string().required(),
+          country: Joi.string().required(),
+          number: Joi.string().required()
+        }).required()
     }).required()
 });
 
@@ -90,21 +97,21 @@ router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
             const decoded = UtilJsonWebToken.decodeToken(req);
             const user = await UtilUser.getUserById(decoded.userId);
             UtilUser.validateUserRoles(user, [RolesEnum.UPDATE_COMPANY]);
-            const company = await UtilCompany.findByCompanyId(companyId);
-            UtilCompany.validaUserHasAccessToCompany(user, company);
-            const {name, phone} = value;
+            const _company = await UtilCompany.findByCompanyId(companyId);
+            UtilCompany.validaUserHasAccessToCompany(user, companyId);
+            const {company} = value;
 
             await company.update({
-                name: name
+                name: company.name
             });
 
-            const companyPhone = await UtilCompanyPhone.getByCompanyId(company.id);
+            const companyPhone = await UtilCompanyPhone.getByCompanyId(_company.id);
             if (companyPhone) {
                 companyPhone.update({
-                    country: phone.country,
-                    area_code: phone.area_code,
-                    number: phone.number,
-                    type: phone.type
+                    country: company.phone.country,
+                    area_code: company.phone.area_code,
+                    number: company.phone.number,
+                    type: company.phone.type
                 });
             }
             res.status(200).json({message: "Empresa atualizada com sucesso!"})
@@ -121,11 +128,11 @@ router.delete("/:id", UtilJsonWebToken.verifyToken, async (req, res) => {
             const { id } = req.params; 
             const decoded = UtilJsonWebToken.decodeToken(req);
             const user = await UtilUser.getUserById(decoded.userId);
+            console.log(user.name);
             const company = await UtilCompany.findByCompanyId(id);
             UtilUser.validateUserRoles(user, [RolesEnum.DELETE_COMPANY]);
-            UtilCompany.validaUserHasAccessToCompany(user, company);
-            res.status("400").json("Empresa deletada");
-    
+            await company.destroy();
+            res.status(200).json("Empresa deletada");
         })
     } catch (error) {
         console.error(error);
