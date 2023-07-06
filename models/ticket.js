@@ -4,6 +4,7 @@ const Event = require('./event');
 const User = require("../models/user");
 const Lots = require("../models/lots");
 const Company = require("../models/company");
+const TicketTypeEnum = require("../enum/TicketTypeEnum");
 
 const Ticket = sequelize.define('Ticket', {
     id: {
@@ -31,6 +32,17 @@ const Ticket = sequelize.define('Ticket', {
       type: DataTypes.BOOLEAN,
       allowNull: false
     },
+    type: {
+      type: DataTypes.ENUM(...Object.values(TicketTypeEnum)),
+      allowNull: false,
+      defaultValue: TicketTypeEnum.MALE,
+      validate: {
+          isIn: {
+              args: [Object.values(TicketTypeEnum)],
+              msg: 'Invalid type',
+          },
+      }
+  },
     owner_user_id: {
       type: DataTypes.INTEGER,
       allowNull: true

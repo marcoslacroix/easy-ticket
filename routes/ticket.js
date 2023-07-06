@@ -15,21 +15,25 @@ const TicketStatus = require("../models/ticket_status");
 const { v4: uuidv4 } = require('uuid');
 const Lots = require("../models/lots");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
+const TicketTypeEnum = require("../enum/TicketTypeEnum");
 
 const createTicketSchema = Joi.object({
     event: Joi.object({
         id: Joi.number().required()
     }).required(),
-    ticket: Joi.object({
-        quantity: Joi.number().required(),
-        price: Joi.number().required(),
-        name: Joi.string().required()
-    }).required(),
+    tickets: Joi.array().items(
+        Joi.object({
+            quantity: Joi.number().required(),
+            price: Joi.number().required(),
+            type: Joi.string().required(),
+            name: Joi.string().required()
+        })
+    ).required(),
     lots: Joi.object({
         description: Joi.string().required(),
         startSales: Joi.date().required(),
         endSales: Joi.date().required(),
-    })
+    }).required()
 });
 
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
@@ -38,7 +42,7 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
         if (error) {
             throw new Error(error.details[0].message);
         }
-        const {event, ticket, lots} = value;
+        const {event, tickets, lots} = value;
         const decoded = UtilJsonWebToken.decodeToken(req);
         const _user = await UtilUser.getUserById(decoded.userId);
         UtilUser.validateUserRoles(_user, [RolesEnum.CREATE_TICKET]);
@@ -56,23 +60,25 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
             event_id: _event.id
         });
 
-        for (let i = 0; i < ticket.quantity; i++) {
-            const _ticket = await Ticket.create({
-                uuid: uuidv4(),
-                name: ticket.name,
-                created_on: new Date(),
-                price: ticket.price,
-                sold: false,
-                lots_id: _lots.id,
-            });
-
-            await TicketStatus.create({
-                status: TicketStatusEnum.AVAILABLE,
-                created_on: new Date(),
-                ticket_id: _ticket.id
-            });
+        for (const item of tickets) {
+            for (let i = 0; i < item.quantity; i++) {
+                const _ticket = await Ticket.create({
+                    uuid: uuidv4(),
+                    name: item.name,
+                    created_on: new Date(),
+                    price: item.price,
+                    sold: false,
+                    type: item.type,
+                    lots_id: _lots.id,
+                });
+    
+                await TicketStatus.create({
+                    status: TicketStatusEnum.AVAILABLE,
+                    created_on: new Date(),
+                    ticket_id: _ticket.id
+                });
+            }
         }
- 
 
         res.status(200).json({ message: "Ingressos criado." });
 
