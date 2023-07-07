@@ -6,13 +6,6 @@ function isStrongPassword(password) {
       };
     }
     
-    if (password.length > 12) {
-        return {
-            isValid: false,
-            messageError: "A senha deve ter no máximo 12 caracteres."
-        };
-    }
-  
     const criteria = [
       { regex: /[A-Z]/, message: 'A senha deve conter pelo menos uma letra maiúscula.' },
       { regex: /[a-z]/, message: 'A senha deve conter pelo menos uma letra minúscula.' },
@@ -41,7 +34,7 @@ function validateOldPassword(oldPassword, userPassword) {
 }
 
 function validaDifferentPassword(newPassword, confirmPassword) {
-  if (value.newPassword != value.confirmPassword) {
+  if (newPassword != confirmPassword) {
     throw new Error("As senhas devem ser iguais.");
   }
 }

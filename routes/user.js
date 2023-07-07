@@ -16,17 +16,7 @@ const createUserSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().required(),
     name: Joi.string().required(),
-    lastname: Joi.string().required(),
-    document: Joi.object({
-      type: Joi.string().required(),
-      value: Joi.string().required()
-    }).required(),
-    phone: Joi.object({
-      areaCode: Joi.string().required(),
-      type: Joi.string().required(),
-      country: Joi.string().required(),
-      number: Joi.string().required()
-    }).required()
+    lastname: Joi.string().required()
 });
 
 router.post("/", async function(req, res) {
@@ -34,32 +24,16 @@ router.post("/", async function(req, res) {
     await sequelize.transaction(async (t1) => {
       const { error, value } = createUserSchema.validate(req.body);
       validateSchemaDto(error);
-      const { email, password, name, lastname, document, phone } = value;
-      let userDocumentWithoutSpecialFields = document.value.replace(/[./\s-]/g, "");
-      await UtilDocument.validateByValue(userDocumentWithoutSpecialFields);
+      const { email, password, name, lastname } = value;
       await UtilUser.validateEmailIsRegistered(email);
       validateStrongPassword(password)
   
-      let user = await User.create({
+      await User.create({
         email,
         password: await UtilToken.encryptPassword(password),
         name,
         created_on: new Date(),
         last_name: lastname
-      });
-  
-      await UserDocument.create({
-        type: document.type,
-        value: userDocumentWithoutSpecialFields,
-        user_id: user.id
-      });
-  
-      await UserPhone.create({
-        area_code: phone.areaCode,
-        number: phone.number,
-        type: phone.type,
-        country: phone.country,
-        user_id: user.id
       });
   
       res.status(200).json({ message: "Usuário criado." });
