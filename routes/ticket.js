@@ -25,8 +25,7 @@ const createTicketSchema = Joi.object({
         Joi.object({
             quantity: Joi.number().required(),
             price: Joi.number().required(),
-            type: Joi.string().required(),
-            name: Joi.string().required()
+            type: Joi.string().required()
         })
     ).required(),
     lots: Joi.object({
@@ -65,7 +64,6 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
             for (let i = 0; i < item.quantity; i++) {
                 const _ticket = await Ticket.create({
                     uuid: uuidv4(),
-                    name: item.name,
                     created_on: new Date(),
                     price: item.price,
                     sold: false,
