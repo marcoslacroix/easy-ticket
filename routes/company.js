@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { sequelize } = require('../config/database');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 
+const CompanySchema = require("../schemaValidate/companySchema");
 const Company = require("../models/company");
 const CompanyPhone = require("../models/company_phone");
 const UtilUser = require("../util/utilUser");
@@ -12,24 +13,10 @@ const RolesEnum = require("../enum/RolesEnum");
 const UtilCompanyPhone = require("../util/UtilCompanyPhone");
 require('express-async-errors');
 
-const createCompanySchema = Joi.object({
-    company: Joi.object({
-        name: Joi.string().required(),
-        identifier: Joi.string().required(),
-        about: Joi.string().required(),
-        phone: Joi.object({
-            areaCode: Joi.string().required(),
-            type: Joi.string().required(),
-            country: Joi.string().required(),
-            number: Joi.string().required()
-        }).required()
-    }).required()
-});
-
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
       await sequelize.transaction(async (t1) => {
-        const { error, value } = createCompanySchema.validate(req.body);
+        const { error, value } = CompanySchema.createSchema.validate(req.body);
         if (error) {
           throw new Error(error.details[0].message);
         }
@@ -65,19 +52,6 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     }
 });
 
-
-const updateCompanySchema = Joi.object({
-    company: Joi.object({
-        name: Joi.string().required(),
-        phone: Joi.object({
-          areaCode: Joi.string().required(),
-          type: Joi.string().required(),
-          country: Joi.string().required(),
-          number: Joi.string().required()
-        }).required()
-    }).required()
-});
-
 function validateCompanyId(companyId) {
     if (!companyId) {
         throw new Error("Id da empresa não enviado");
@@ -90,7 +64,7 @@ router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
             const queryParams = req.query;
             const companyId = queryParams.companyId;
             validateCompanyId(companyId);
-            const { error, value } = updateCompanySchema.validate(req.body);
+            const { error, value } = CompanySchema.updateSchema.validate(req.body);
             if (error) {
               throw new Error(error.details[0].message);
             }

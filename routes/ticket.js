@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { sequelize } = require('../config/database');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 
 const Event = require("../models/event");
@@ -14,29 +13,13 @@ const Ticket = require("../models/ticket");
 const { v4: uuidv4 } = require('uuid');
 const Lots = require("../models/lots");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
-const TicketTypeEnum = require("../enum/TicketTypeEnum");
+const UserSchema = require("../schemaValidate/userSchema");
+const { updateLotsSchema } = require('../schemaValidate/ticketSchema');
 
-const createTicketSchema = Joi.object({
-    event: Joi.object({
-        id: Joi.number().required()
-    }).required(),
-    tickets: Joi.array().items(
-        Joi.object({
-            quantity: Joi.number().required(),
-            price: Joi.number().required(),
-            type: Joi.string().required()
-        })
-    ).required(),
-    lots: Joi.object({
-        description: Joi.string().required(),
-        startSales: Joi.date().required(),
-        endSales: Joi.date().required(),
-    }).required()
-});
 
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
-        const { error, value } = createTicketSchema.validate(req.body);
+        const { error, value } = UserSchema.createSchema.validate(req.body);
         if (error) {
             throw new Error(error.details[0].message);
         }
@@ -79,16 +62,6 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
         res.status(400).json({ error: error.message });
     }
 
-});
-
-
-const updateLotsSchema = Joi.object({
-    lots: Joi.object({
-        id: Joi.number().required(),
-        description: Joi.string().required(),
-        startSales: Joi.date().required(),
-        endSales: Joi.date().required(),
-    })
 });
 
 router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {

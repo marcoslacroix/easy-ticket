@@ -1,28 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const Joi = require('joi');
 const UtilToken = require("../util/utilToken");
 const User = require("../models/user");
 const { sequelize } = require('../config/database');
-const UserDocument = require("../models/user_document");
-const UserPhone = require("../models/user_phone");
 const UtilUser = require("../util/utilUser");
 const UtilPassword = require("../util/utilPassword");
-const UtilDocument = require("../util/utilDocument");
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
+const UserSchema = require("../schemaValidate/userSchema");
 require('express-async-errors');
-
-const createUserSchema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
-    name: Joi.string().required(),
-    lastname: Joi.string().required()
-});
 
 router.post("/", async function(req, res) {
   try {
     await sequelize.transaction(async (t1) => {
-      const { error, value } = createUserSchema.validate(req.body);
+      const { error, value } = UserSchema.createSchema.validate(req.body);
       validateSchemaDto(error);
       const { email, password, name, lastname } = value;
       await UtilUser.validateEmailIsRegistered(email);
@@ -42,12 +32,6 @@ router.post("/", async function(req, res) {
     console.error(error);
     res.status(400).json({ error: error.message });
   }
-});
-
-const updatePasswordSchema = Joi.object({
-  oldPassword: Joi.string().required(),
-  newPassword: Joi.string().required(),
-  confirmPassword: Joi.string().required()
 });
 
 function validateStrongPassword(password) {
@@ -73,7 +57,7 @@ router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(re
     await sequelize.transaction(async (t1) => {
       const decoded = UtilJsonWebToken.decodeToken(req);
       const user = await UtilUser.getUserById(decoded.userId);
-      const {error, value} = updatePasswordSchema.validate(req.body);
+      const {error, value} = UserSchema.updatePasswordSchema.validate(req.body);
       validateSchemaDto(error);
       validatePassword(value, user);
       await user.update({
