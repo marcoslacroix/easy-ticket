@@ -1,3 +1,5 @@
+const UtilToken = require("../util/utilToken");
+
 function isStrongPassword(password) {
     if (password.length < 8) {
       return {
@@ -27,8 +29,14 @@ function isStrongPassword(password) {
         messageError: ""
     };
   }
-function validateOldPassword(oldPassword, userPassword) {
-  if (!UtilToken.isPasswordMatch(oldPassword, userPassword)) {
+async function validateOldPassword(value, userPassword) {
+  const isPasswordMatch = await UtilToken.isPasswordMatch(value.oldPassword, userPassword);
+  const isSameOldAndNewPassword = await UtilToken.isPasswordMatch(value.newPassword, userPassword);
+  if (isSameOldAndNewPassword) {
+    throw new Error("Nova senha deve ser diferente da sua senha antiga");
+  }
+  
+  if (!isPasswordMatch) {
     throw new Error("Senha antiga invalida");
   }
 }

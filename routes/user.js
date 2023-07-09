@@ -41,8 +41,8 @@ function validateStrongPassword(password) {
     };
 }
 
-function validatePassword(value, user) {
-  UtilPassword.validateOldPassword(value.oldPassword, user.password);
+async function validatePassword(value, user) {
+  await UtilPassword.validateOldPassword(value, user.password);
   UtilPassword.validaDifferentPassword(value.newPassword, value.confirmPassword);
   validateStrongPassword(value.newPassword);
 }
@@ -56,10 +56,11 @@ router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(re
   try {
     await sequelize.transaction(async (t1) => {
       const decoded = UtilJsonWebToken.decodeToken(req);
+      console.log(decoded);
       const user = await UtilUser.getUserById(decoded.userId);
       const {error, value} = UserSchema.updatePasswordSchema.validate(req.body);
       validateSchemaDto(error);
-      validatePassword(value, user);
+      await validatePassword(value, user);
       await user.update({
         password: await UtilToken.encryptPassword(value.newPassword)
       });

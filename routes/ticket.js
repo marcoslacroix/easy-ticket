@@ -45,7 +45,6 @@ router.post("/checking", UtilJsonWebToken.verifyToken, async function(req, res) 
         console.error(error);
         res.status(400).json({ error: error.message });
     }
-    
 });
 
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
