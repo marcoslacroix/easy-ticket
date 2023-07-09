@@ -41,7 +41,7 @@ async function validateOldPassword(value, userPassword) {
   }
 }
 
-function validaDifferentPassword(newPassword, confirmPassword) {
+function validateNewPasswordWithConfirmPassword(newPassword, confirmPassword) {
   if (newPassword != confirmPassword) {
     throw new Error("As senhas devem ser iguais.");
   }
@@ -49,6 +49,6 @@ function validaDifferentPassword(newPassword, confirmPassword) {
 
 module.exports = {
   isStrongPassword,
-  validaDifferentPassword,
+  validateNewPasswordWithConfirmPassword,
   validateOldPassword
 }

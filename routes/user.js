@@ -43,7 +43,7 @@ function validateStrongPassword(password) {
 
 async function validatePassword(value, user) {
   await UtilPassword.validateOldPassword(value, user.password);
-  UtilPassword.validaDifferentPassword(value.newPassword, value.confirmPassword);
+  UtilPassword.validateNewPasswordWithConfirmPassword(value.newPassword, value.confirmPassword);
   validateStrongPassword(value.newPassword);
 }
 
