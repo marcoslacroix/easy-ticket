@@ -1,5 +1,7 @@
 const Ticket = require('../models/ticket')
 const { Op } = require('sequelize');
+const QRCode = require('qrcode');
+
 
 async function findAllByIds(ids) {
     try {
@@ -15,6 +17,17 @@ async function findAllByIds(ids) {
         throw error;
     }
 }
+const generateQRCode = async (dados) => {
+  return new Promise((resolve, reject) => {
+    QRCode.toDataURL(dados, (err, qrCodeUrl) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(qrCodeUrl);
+    });
+  });
+};
 
 async function findOneById(id) {
   try {
@@ -31,5 +44,6 @@ async function findOneById(id) {
 
 module.exports = {
   findAllByIds,
-  findOneById
+  findOneById,
+  generateQRCode
 }

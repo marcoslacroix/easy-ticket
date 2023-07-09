@@ -1,6 +1,5 @@
 
 var amqp = require('amqplib/callback_api');
-const UtilTicketStatus = require("../util/utilTicketStatus")
 
 function start() {
   amqp.connect(`${process.env.RABBITMQ_URL}?heartbeat=60`, function(err, conn) {
@@ -106,7 +105,6 @@ function startWorkerTicketStatus() {
     function work(msg, cb) {
       const jsonObject = JSON.parse(msg.content.toString());
       console.log("teste");
-      UtilTicketStatus.changeStatusForAvailableIfNotPaid(jsonObject.ticketId);
       cb(true);
     }
   });

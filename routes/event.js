@@ -1,41 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
+const { Op } = require('sequelize');
+const { literal, fn, col } = require('sequelize');
 const { sequelize } = require('../config/database');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 
+const EventDTO = require("../dto/eventDto");
 const UtilUser = require("../util/utilUser");
 const UtilCompany = require("../util/utilCompany");
 const Event = require("../models/event");
 const EventAddress = require("../models/event_address");
 const RolesEnum = require("../enum/RolesEnum");
-
-const createEventSchema = Joi.object({
-    company: Joi.object({
-        id: Joi.number().required()
-    }).required(),
-    event: Joi.object({
-        name: Joi.string().required(),
-        period: Joi.date().required(),
-        start: Joi.string().required(),
-        description: Joi.string().required(),
-        address: Joi.object({
-            name: Joi.string().required(),
-            street: Joi.string().required(),
-            number: Joi.string().required(),
-            postal_code: Joi.string().required(),
-            neighborhood: Joi.string().required(),
-            city: Joi.string().required(),
-            state: Joi.string().required(),
-            acronymState: Joi.string().required()
-        }).required()
-    }).required()
-});
+const EventSchema = require("../schemaValidate/eventSchema");
 
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
         await sequelize.transaction(async (t1) => {
-            const { error, value } = createEventSchema.validate(req.body);
+            const { error, value } = EventSchema.createSchema.validate(req.body);
             if (error) {
                 throw new Error(error.details[0].message);
             }
@@ -74,33 +56,10 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     }
 });
 
-const updateEventSchema = Joi.object({
-    company: Joi.object({
-        id: Joi.number().required()
-    }).required(),
-    event: Joi.object({
-        id: Joi.number().required(),
-        name: Joi.string().required(),
-        period: Joi.date().required(),
-        start: Joi.string().required(),
-        description: Joi.string().required(),
-        address: Joi.object({
-            name: Joi.string().required(),
-            street: Joi.string().required(),
-            number: Joi.string().required(),
-            postal_code: Joi.string().required(),
-            neighborhood: Joi.string().required(),
-            city: Joi.string().required(),
-            state: Joi.string().required(),
-            acronymState: Joi.string().required()
-        }).required()
-    }).required()
-});
-
 router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
         await sequelize.transaction(async (t1) => {
-            const { error, value } = updateEventSchema.validate(req.body);
+            const { error, value } = EventSchema.updateSchema.validate(req.body);
             if (error) {
                 throw new Error(error.details[0].message);
             }
@@ -132,5 +91,43 @@ router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
         res.status(400).json({ error: error.message });
     }
 });
+
+router.get("/", async function(req, res) {
+    
+    const currentDate = new Date();
+    const currentDateFormatted = currentDate.toISOString().split('T')[0];
+    const _allEventsGreaterOrEqualCurrentDate = await Event.findAll({
+        where: {
+            [Op.or]: [
+                sequelize.where(sequelize.fn('DATE', sequelize.col('period')), currentDateFormatted),
+                {
+                  period: {
+                    [Op.gte]: currentDateFormatted
+                  }
+                }
+            ]
+        }
+    });
+
+    const events = [];
+
+    for (const event of _allEventsGreaterOrEqualCurrentDate) {
+        const eventDTO = new EventDTO(
+            event.id,
+            event.name,
+            event.period,
+            event.companyId,
+            event.start,
+            event.description,
+            event.createdOn,
+            event.image
+        );
+        
+        events.push(eventDTO);
+    }
+    res.status(200).json({
+        events
+    });
+})
 
 module.exports = router;

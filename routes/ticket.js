@@ -11,7 +11,6 @@ const UtilCompany = require("../util/utilCompany");
 const UtilEvent = require("../util/utilEvent");
 const UtilLots = require("../util/utilLots");
 const Ticket = require("../models/ticket");
-const TicketStatus = require("../models/ticket_status");
 const { v4: uuidv4 } = require('uuid');
 const Lots = require("../models/lots");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
@@ -62,19 +61,13 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
 
         for (const item of tickets) {
             for (let i = 0; i < item.quantity; i++) {
-                const _ticket = await Ticket.create({
+                await Ticket.create({
                     uuid: uuidv4(),
                     created_on: new Date(),
                     price: item.price,
-                    sold: false,
+                    status: TicketStatusEnum.AVAILABLE,
                     type: item.type,
                     lots_id: _lots.id,
-                });
-    
-                await TicketStatus.create({
-                    status: TicketStatusEnum.AVAILABLE,
-                    created_on: new Date(),
-                    ticket_id: _ticket.id
                 });
             }
         }
