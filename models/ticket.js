@@ -50,6 +50,11 @@ const Ticket = sequelize.define('Ticket', {
       type: DataTypes.BLOB,
       allowNull: true
     },
+    is_used: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     owner_user_id: {
       type: DataTypes.INTEGER,
       allowNull: true

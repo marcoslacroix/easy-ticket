@@ -43,17 +43,17 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
       let statusPayment;
       let paymentRespopnse;
       response?.data?.charges?.forEach((charge) => {
-        if (charge.status === "DECLINED") {
-          statusPayment = "DECLINED";
+        if (charge.status === TicketStatusEnum.DECLINED) {
+          statusPayment = TicketStatusEnum.DECLINED;
           paymentRespopnse = charge.payment_response.message;
-        } else if (charge.status === "PAID") {
-          statusPayment = "PAID";
+        } else if (charge.status ===  TicketStatusEnum.PAID) {
+          statusPayment = TicketStatusEnum.PAID;
         }
         delete charge.payment_method;
       });
 
-      if (statusPayment != "PAID") {
-        throw new Error(paymentRespopnse ? paymentRespopnse : "Houve um erro para realizar o pagamento")
+      if (statusPayment != TicketStatusEnum.PAID) {
+        throw new Error(paymentRespopnse ? paymentRespopnse : "Pagamento negado")
       }
 
       await Order.create({

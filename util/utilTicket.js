@@ -2,20 +2,37 @@ const Ticket = require('../models/ticket')
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
 
+async function findTicketForChecking(uuid) {
+  try {
+    const ticket = await Ticket.findOne({
+      where: {
+        uuid: uuid,
+        status: TicketStatusEnum.PAID,
+        is_used: false
+      }
+    });
+    if (!_ticket) {
+      throw new Error("Ingresso não localizado ou já foi utilizado.") 
+    }
+    return ticket;
+  } catch(error) {
+    throw error;
+  }
+}
 
 async function findAllByIds(ids) {
-    try {
-        return await Ticket.findAll({
-          where: {
-            id: {
-              [Op.in]: ids
-            }
-          }
-        });
-    } catch (error) {
-        console.error('Erro na busca dos ingressos: ', error);
-        throw error;
-    }
+  try {
+    return await Ticket.findAll({
+      where: {
+        id: {
+          [Op.in]: ids
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erro na busca dos ingressos: ', error);
+    throw error;
+  }
 }
 const generateQRCode = async (dados) => {
   return new Promise((resolve, reject) => {
@@ -45,5 +62,6 @@ async function findOneById(id) {
 module.exports = {
   findAllByIds,
   findOneById,
+  findTicketForChecking,  
   generateQRCode
 }

@@ -27,7 +27,12 @@ const updateLotsSchema = Joi.object({
     })
 });
 
+const checkingSchema = Joi.object({
+    uuid: Joi.string().required()
+});
+
 module.exports = {
     createSchema,
-    updateLotsSchema
+    updateLotsSchema,
+    checkingSchema
 }

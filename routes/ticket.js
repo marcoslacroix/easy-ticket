@@ -3,23 +3,54 @@ const router = express.Router();
 const Joi = require('joi');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 
-const Event = require("../models/event");
 const RolesEnum = require("../enum/RolesEnum");
 const UtilUser = require("../util/utilUser");
 const UtilCompany = require("../util/utilCompany");
+const UtilTicket = require("../util/utilTicket")
 const UtilEvent = require("../util/utilEvent");
 const UtilLots = require("../util/utilLots");
 const Ticket = require("../models/ticket");
 const { v4: uuidv4 } = require('uuid');
 const Lots = require("../models/lots");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
-const UserSchema = require("../schemaValidate/userSchema");
-const { updateLotsSchema } = require('../schemaValidate/ticketSchema');
+const TicketSchema = require("../schemaValidate/ticketSchema");
 
+router.post("/checking", UtilJsonWebToken.verifyToken, async function(req, res) {
+    try {
+        const { error, value } = TicketSchema.checkingSchema.validate(req.body);
+        if (error) {
+            throw new Error(error.details[0].message);
+        }
+        const decoded = UtilJsonWebToken.decodeToken(req);
+        const _user = await UtilUser.getUserById(decoded.userId);
+        UtilUser.validateUserRoles(_user, [RolesEnum.CHECKING_TICKET]);
+
+        const {uuid} = value;
+        const _ticket = await UtilTicket.findTicketForChecking(uuid);
+
+        const _lots = await Lots.findOne({
+            where: {
+                id: _ticket.lots_id
+            }
+        });
+        const _company = await UtilCompany.findByCompanyId(_lots.company_id);
+        UtilCompany.validaUserHasAccessToCompany(_user, _company.id);
+
+        await _ticket.update({
+            is_used: true
+        })
+
+        res.status(200).json({message: "Entrada autorizada com sucesso!"});
+    } catch(error) {
+        console.error(error);
+        res.status(400).json({ error: error.message });
+    }
+    
+});
 
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
-        const { error, value } = UserSchema.createSchema.validate(req.body);
+        const { error, value } = TicketSchema.createSchema.validate(req.body);
         if (error) {
             throw new Error(error.details[0].message);
         }
@@ -66,7 +97,7 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
 
 router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
-        const { error, value } = updateLotsSchema.validate(req.body);
+        const { error, value } = TicketSchema.updateLotsSchema.validate(req.body);
         if (error) {
             throw new Error(error.details[0].message);
         }
