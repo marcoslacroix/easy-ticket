@@ -29,6 +29,5 @@ const updateLotsSchema = Joi.object({
 
 module.exports = {
     createSchema,
-    updateSchema,
     updateLotsSchema
 }

@@ -40,10 +40,22 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
       }
 
       const response = await PagSeguro.createOrder(data);
+      let statusPayment;
+      let paymentRespopnse;
       response?.data?.charges?.forEach((charge) => {
+        if (charge.status === "DECLINED") {
+          statusPayment = "DECLINED";
+          paymentRespopnse = charge.payment_response.message;
+        } else if (charge.status === "PAID") {
+          statusPayment = "PAID";
+        }
         delete charge.payment_method;
       });
-  
+
+      if (statusPayment != "PAID") {
+        throw new Error(paymentRespopnse ? paymentRespopnse : "Houve um erro para realizar o pagamento")
+      }
+
       await Order.create({
         response: response.data,
         user_id: user.id,
@@ -55,7 +67,7 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
         const ticketId = parseInt(item.reference_id);
         const _ticket = await UtilTicket.findOneById(ticketId);
         const qrCodeUrl = await UtilTicket.generateQRCode(_ticket.uuid);
- 
+  
         await _ticket.update(
           {
             owner_user_id: user.id,
@@ -63,9 +75,9 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
             qr_code: qrCodeUrl
           }
         );
-  
       }
-  
+    
+      
       res.status(200).json({message: "Pagamento realizado com sucesso"});
     });
   } catch (error) {
