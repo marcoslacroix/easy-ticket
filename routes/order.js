@@ -130,9 +130,7 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
         const content = Buffer.from(payload);
         Queue.publish("ticket-status", content, 600000);
         return res.status(201).json({message: response.data.qr_codes});
-      }
-
-      if (statusPayment == TicketStatusEnum.PAID) {
+      } else if (statusPayment == TicketStatusEnum.PAID) {
         return res.status(200).json({message: "Pagamento aprovado."});
       } else if (statusPayment == TicketStatusEnum.IN_ANALYSIS) {
         return res.status(200).json({message: "Seu pagamento está em análise"});
