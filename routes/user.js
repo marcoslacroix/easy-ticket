@@ -7,6 +7,7 @@ const UtilUser = require("../util/utilUser");
 const UtilPassword = require("../util/utilPassword");
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 const UserSchema = require("../schemaValidate/userSchema");
+const EmailSend = require("../email/send");
 require('express-async-errors');
 
 router.post("/", async function(req, res) {
@@ -25,7 +26,26 @@ router.post("/", async function(req, res) {
         created_on: new Date(),
         last_name: lastname
       });
-  
+
+      const subject = `Bem-vindo(a), ${name} ${lastname}! Sua conta foi criada com sucesso.`;
+      const htmlBody = `
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Bem-vindo(a), ${name} ${lastname}!</h1>
+          <p>Sua conta foi criada com sucesso.</p>
+          <p>Caso você não tenha criado uma conta, ignore este e-mail.</p>
+          <p>Atenciosamente,<br>Equipe do Easy Ticket</p>
+        </body>
+      </html>`;
+      EmailSend.sendMail(email, subject, htmlBody);
+
       res.status(200).json({ message: "Usuário criado." });
     });
   } catch (error) {

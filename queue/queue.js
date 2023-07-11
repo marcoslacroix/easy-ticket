@@ -1,5 +1,6 @@
 
 var amqp = require('amqplib/callback_api');
+const UtilPayment = require("../util/utilPayment");
 
 function start() {
   amqp.connect(`${process.env.RABBITMQ_URL}?heartbeat=60`, function(err, conn) {
@@ -103,8 +104,8 @@ function startWorkerTicketStatus() {
     }
 
     function work(msg, cb) {
-      const jsonObject = JSON.parse(msg.content.toString());
-      console.log("teste");
+      const items = JSON.parse(msg.content.toString());
+      UtilPayment.updateTicketsToAvailable(items);
       cb(true);
     }
   });

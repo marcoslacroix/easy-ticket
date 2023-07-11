@@ -37,7 +37,7 @@ async function validateOldPassword(value, userPassword) {
   }
   
   if (!isPasswordMatch) {
-    throw new Error("Senha antiga invalida");
+    throw new Error("Senha antiga inválida");
   }
 }
 

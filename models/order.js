@@ -13,6 +13,10 @@ const Order = sequelize.define('Order', {
       type: DataTypes.DATE,
       allowNull: false,
     },
+    error: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -16,7 +16,7 @@ router.post('/', async (req, res)  => {
           return;
         }
       }
-      res.status(401).json({ message: 'Credenciais inválidas' });
+      res.status(401).json({ message: 'Email ou senha inválida' });
 });
 
 

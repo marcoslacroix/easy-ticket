@@ -25,20 +25,21 @@ const payObject = Joi.object({
       value: Joi.number().required(),
       currency: Joi.string().required()
     }).required(),
+    isQrCode: Joi.boolean(),
     payment_method: Joi.object({
-      type: Joi.string().valid('CREDIT_CARD').required(),
-      installments: Joi.number().integer().required(),
+      type: Joi.string().valid('CREDIT_CARD'),
+      installments: Joi.number().integer(),
       card: Joi.object({
-        number: Joi.string().creditCard().required(),
-        exp_month: Joi.string().length(2).required(),
-        exp_year: Joi.string().length(4).required(),
-        security_code: Joi.string().length(3).required(),
+        number: Joi.string().creditCard(),
+        exp_month: Joi.string().length(2),
+        exp_year: Joi.string().length(4),
+        security_code: Joi.string().length(3),
         holder: Joi.object({
-          name: Joi.string().required()
-        }).required(),
-        store: Joi.boolean().required()
-      }).required()
-    }).required()
+          name: Joi.string()
+        }),
+        store: Joi.boolean()
+      })
+    })
   });
 
   module.exports = {payObject};
