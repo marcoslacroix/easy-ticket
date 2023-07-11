@@ -108,7 +108,7 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async function (req, res) {
         data.qr_codes = [
           {
             "amount": {
-              "value": 10000
+              "value": amount.value
             },
             "expiration_date": expirationDate
           }
