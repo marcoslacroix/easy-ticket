@@ -1,6 +1,5 @@
 const {DataTypes} = require("sequelize");
 const { sequelize } = require('../config/database');
-
 const Event = sequelize.define('Event', {
     id: {
       type: DataTypes.INTEGER,
@@ -33,7 +32,7 @@ const Event = sequelize.define('Event', {
     },
     image: {
       type: DataTypes.BLOB,
-      allowNull: false
+      allowNull: true
     }
   }, 
   {
@@ -42,5 +41,6 @@ const Event = sequelize.define('Event', {
       tableName: 'event'
   }
   );
+  
   
   module.exports = Event;

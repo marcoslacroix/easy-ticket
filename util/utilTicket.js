@@ -20,6 +20,19 @@ async function findTicketForChecking(uuid) {
   }
 }
 
+function validateTicketIsSameEvent(_event, event) {
+  if (_event.id != event) {
+    throw new Error("Não é possível fazer o checking de outro evento.");
+  }
+}
+
+async function setIsUsed(_ticket) {
+  await _ticket.update({
+    is_used: true
+  })
+
+}
+
 async function findAllByIds(ids) {
   try {
     return await Ticket.findAll({
@@ -62,6 +75,8 @@ async function findOneById(id) {
 module.exports = {
   findAllByIds,
   findOneById,
+  validateTicketIsSameEvent,
+  setIsUsed,
   findTicketForChecking,  
   generateQRCode
 }

@@ -50,6 +50,10 @@ const Ticket = sequelize.define('Ticket', {
       type: DataTypes.BLOB,
       allowNull: true
     },
+    txid: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
     is_used: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -62,6 +66,10 @@ const Ticket = sequelize.define('Ticket', {
     lots_id: {
       type: DataTypes.INTEGER,
       allowNull: false
+    },
+    charge_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
   }, 
   {

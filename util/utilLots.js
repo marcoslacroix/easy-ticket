@@ -17,7 +17,6 @@ async function findById(lotsId) {
     }
 }
 
-
 module.exports = {
     findById
 }

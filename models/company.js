@@ -15,18 +15,27 @@ const Company = sequelize.define('Company', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  gn_account_identifier_payee_code: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  gn_account: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  gn_split_config: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   image: {
     type: DataTypes.BLOB,
-    allowNull: false,
+    allowNull: true,
   },
   created_on: {
     type: DataTypes.DATE,
     allowNull: false,
-  },
-  identifier: {
-    type: DataTypes.STRING,
-    allowNull: false
   }
+
 }, 
 {
     freezeTableName: true,

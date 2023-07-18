@@ -15,11 +15,12 @@ router.post("/", async function(req, res) {
     await sequelize.transaction(async (t1) => {
       const { error, value } = UserSchema.createSchema.validate(req.body);
       validateSchemaDto(error);
-      const { email, password, name, lastname } = value;
+      const { email, password, confirmPassword, name, lastname } = value;
+      UtilPassword.validateNewPasswordWithConfirmPassword(password, confirmPassword);
       await UtilUser.validateEmailIsRegistered(email);
-      validateStrongPassword(password)
+      UtilUser.validateStrongPassword(password);
   
-      await User.create({
+      const _user = await User.create({
         email,
         password: await UtilToken.encryptPassword(password),
         name,
@@ -27,24 +28,8 @@ router.post("/", async function(req, res) {
         last_name: lastname
       });
 
-      const subject = `Bem-vindo(a), ${name} ${lastname}! Sua conta foi criada com sucesso.`;
-      const htmlBody = `
-      <html>
-        <head>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Bem-vindo(a), ${name} ${lastname}!</h1>
-          <p>Sua conta foi criada com sucesso.</p>
-          <p>Caso você não tenha criado uma conta, ignore este e-mail.</p>
-          <p>Atenciosamente,<br>Equipe do Easy Ticket</p>
-        </body>
-      </html>`;
-      EmailSend.sendMail(email, subject, htmlBody);
+      UtilUser.sendEmailUserCreated(_user);
+      
 
       res.status(200).json({ message: "Usuário criado." });
     });
@@ -54,33 +39,20 @@ router.post("/", async function(req, res) {
   }
 });
 
-function validateStrongPassword(password) {
-  const objectIsStrongPassword = UtilPassword.isStrongPassword(password);
-    if (!objectIsStrongPassword.isValid){
-      throw new Error(objectIsStrongPassword.messageError);
-    };
-}
-
-async function validatePassword(value, user) {
-  await UtilPassword.validateOldPassword(value, user.password);
-  UtilPassword.validateNewPasswordWithConfirmPassword(value.newPassword, value.confirmPassword);
-  validateStrongPassword(value.newPassword);
-}
-
 function validateSchemaDto(error) {
   if (error) {
     throw new Error(error.details[0].message);
   }
 }
+4
 router.patch("/change-password", UtilJsonWebToken.verifyToken, async function(req, res) {
   try {
     await sequelize.transaction(async (t1) => {
       const decoded = UtilJsonWebToken.decodeToken(req);
-      console.log(decoded);
       const user = await UtilUser.getUserById(decoded.userId);
       const {error, value} = UserSchema.updatePasswordSchema.validate(req.body);
       validateSchemaDto(error);
-      await validatePassword(value, user);
+      await UtilUser.validatePassword(value, user);
       await user.update({
         password: await UtilToken.encryptPassword(value.newPassword)
       });

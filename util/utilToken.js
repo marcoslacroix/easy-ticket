@@ -17,7 +17,6 @@ async function encryptPassword(password) {
     }
 }
 
-
 module.exports = {
     encryptPassword, 
     isPasswordMatch,

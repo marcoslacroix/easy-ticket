@@ -4,11 +4,14 @@ const Joi = require('joi');
 const { sequelize } = require('../config/database');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 
+const GNRequest = require('../apis/gerencianet');
 const CompanySchema = require("../schemaValidate/companySchema");
 const Company = require("../models/company");
 const CompanyPhone = require("../models/company_phone");
 const UtilUser = require("../util/utilUser");
+const UtilPayment = require("../util/utilPayment");
 const UtilCompany = require("../util/utilCompany");
+const CompanyDocument = require("../models/company_document");
 const RolesEnum = require("../enum/RolesEnum");
 const UtilCompanyPhone = require("../util/UtilCompanyPhone");
 require('express-async-errors');
@@ -25,17 +28,26 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
 
         UtilUser.validateUserRoles(user, [RolesEnum.CREATE_COMPANY]);
 
-        const { company } = value;
-        const identifierWithoutSpecialFields = company.identifier.replace(/[./\s-]/g, "");
-        await UtilCompany.validateByIdentifierOrName(identifierWithoutSpecialFields, company.name);
-  
+        const { company, gerencianet } = value;
+        const documentValue = company.document.value.replace(/[./\s-]/g, "");
+        await UtilCompany.validateByIdentifierOrName(documentValue, company.name);
+        const reqGN = await GNRequest({clientID: process.env.GN_CLIENT_ID, clientSecret: process.env.GN_CLIENT_SECRET});
+        const splitResponse = await reqGN.post('/v2/gn/split/config', UtilPayment.parseSplitData(company.document.type, gerencianet.gn_account, documentValue));
         const _company = await Company.create({
           name: company.name,
           about: company.about,
-          identifier: identifierWithoutSpecialFields,
+          gn_account: gerencianet.gn_account,
+          gn_account_identifier_payee_code: gerencianet.gn_account_identifier_payee_code,
+          gn_split_config: splitResponse.data.id,
           created_on: new Date()
         });
-  
+        
+        await CompanyDocument.create({
+          type: company.document.type,
+          value: documentValue,
+          company_id: _company.id
+        })
+
         await CompanyPhone.create({
           area_code: company.phone.areaCode,
           number: company.phone.number,

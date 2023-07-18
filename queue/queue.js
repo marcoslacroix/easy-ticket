@@ -104,8 +104,8 @@ function startWorkerTicketStatus() {
     }
 
     function work(msg, cb) {
-      const items = JSON.parse(msg.content.toString());
-      UtilPayment.updateTicketsToAvailable(items);
+      const payload = JSON.parse(msg.content.toString());
+      UtilPayment.updateTicketsToAvailable(payload);
       cb(true);
     }
   });

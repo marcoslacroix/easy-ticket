@@ -1,16 +1,18 @@
 const Joi = require('joi');
+const messages = require("../schemaValidate/messages");
 
 const createSchema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
-    name: Joi.string().required(),
-    lastname: Joi.string().required()
+    name: Joi.string().required().messages(messages),
+    lastname: Joi.string().required().messages(messages),
+    email: Joi.string().email().required().messages(messages),
+    password: Joi.string().required().messages(messages),
+    confirmPassword: Joi.string().required().messages(messages),
 });
 
 const updatePasswordSchema = Joi.object({
-    oldPassword: Joi.string().required(),
-    newPassword: Joi.string().required(),
-    confirmPassword: Joi.string().required()
+    oldPassword: Joi.string().required().messages(messages),
+    newPassword: Joi.string().required().messages(messages),
+    confirmPassword: Joi.string().required().messages(messages),
   });
   
 

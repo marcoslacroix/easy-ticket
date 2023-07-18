@@ -1,45 +1,57 @@
 const Joi = require('joi');
+const messages = require("../schemaValidate/messages");
 
-const payObject = Joi.object({
-    tickets: Joi.array().items(
-      Joi.object({
-        lots: Joi.number().required(),
-        type: Joi.string().valid('MALE', 'FEMALE').required(),
-        quantity: Joi.number().integer().required()
-      })
-    ).required(),
-    customer: Joi.object({
-      name: Joi.string().required(),
-      email: Joi.string().email().required(),
-      document: Joi.string().required(),
-      phones: Joi.array().items(
-        Joi.object({
-          country: Joi.string().required(),
-          area: Joi.string().required(),
-          number: Joi.string().required(),
-          type: Joi.string().required()
-        })
-      ).required()
-    }).required(),
-    amount: Joi.object({
-      value: Joi.number().required(),
-      currency: Joi.string().required()
-    }).required(),
-    isQrCode: Joi.boolean(),
-    payment_method: Joi.object({
-      type: Joi.string().valid('CREDIT_CARD'),
-      installments: Joi.number().integer(),
-      card: Joi.object({
-        number: Joi.string().creditCard(),
-        exp_month: Joi.string().length(2),
-        exp_year: Joi.string().length(4),
-        security_code: Joi.string().length(3),
-        holder: Joi.object({
-          name: Joi.string()
-        }),
-        store: Joi.boolean()
-      })
+const ticketsPaymentByCard = Joi.object({
+  company: Joi.number().required().messages(messages),
+  tickets: Joi.array().items(
+    Joi.object({
+      lots: Joi.number().required().messages(messages),
+      type: Joi.string().valid('MALE', 'FEMALE').required().messages(messages),
+      quantity: Joi.number().integer().required().messages(messages),
     })
-  });
+  ).required(),
+  card: Joi.object({
+    brand: Joi.string().required().messages(messages),
+    number: Joi.string().required().messages(messages),
+    cvv: Joi.string().required().messages(messages),
+    expiration_month: Joi.string().required().messages(messages),
+    expiration_year: Joi.string().required().messages(messages),
 
-  module.exports = {payObject};
+  }).required(),
+  payment: Joi.object({
+    credit_card: Joi.object({
+      installments: Joi.number().messages(messages),
+      billing_address: Joi.object({
+        street: Joi.string().required().messages(messages),
+        number: Joi.number().required().messages(messages),
+        neighborhood: Joi.string().required().messages(messages),
+        zipcode: Joi.string().required().messages(messages),
+        city: Joi.string().required().messages(messages),
+        state: Joi.string().required().messages(messages),
+      }),
+      customer: Joi.object({
+        name: Joi.string().required().messages(messages),
+        email: Joi.string().required().messages(messages),
+        cpf: Joi.string().required().messages(messages),
+        birth: Joi.string().required().messages(messages),
+        phone_number: Joi.string().required().messages(messages),
+      })
+    }).required()
+  }).required()
+});
+
+const ticketsPayment = Joi.object({
+  company: Joi.number().required().messages(messages),
+  tickets: Joi.array().items(
+    Joi.object({
+      lots: Joi.number().required().messages(messages),
+      type: Joi.string().valid('MALE', 'FEMALE').required().messages(messages),
+      quantity: Joi.number().integer().required().messages(messages),
+    })
+  ).required(),
+});
+
+  module.exports = {
+    ticketsPaymentByCard,
+    ticketsPayment
+  };

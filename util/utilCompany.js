@@ -1,22 +1,30 @@
 const { Op  } = require('sequelize');
 const Company = require('../models/company');
+const CompanyDocument = require("../models/company_document");
 
-async function validateByIdentifierOrName(identifier, name) {
+function validateGnAccount(_company) {
+    if (!_company.gn_account) {
+        throw new Error("Empresa sem gn account!");
+    }
+}
+
+function validateGnAccountIdentifierPayeeCode(_company) {
+    if (!_company.gn_account_identifier_payee_code) {
+        throw new Error("Empresa sem gn_account_identifier_payee_code");
+      }
+}
+
+async function validateByIdentifierOrName(identifier) {
     try {
-        const company = await Company.findOne({
+        const companyDocument = await CompanyDocument.findOne({
             where: {
-                [Op.or]: [
-                    { name: name },
-                    { identifier: identifier }
-                ]
+                value: identifier
             }
-          });
-
-        if (company) {
-            throw new Error("Nome ou Identifier já cadastrado no sistema");
+        });
+        if (companyDocument) {
+            throw new Error("Identificador já cadastrado no sistema");
         }
 
-        return company;
     } catch(error) {
         console.error('Error finding company by identifier:', error);
         throw error;
@@ -50,5 +58,7 @@ async function findByCompanyId(companyId) {
 module.exports = {
     validateByIdentifierOrName,
     findByCompanyId,
+    validateGnAccount,
+    validateGnAccountIdentifierPayeeCode,
     validaUserHasAccessToCompany
 }

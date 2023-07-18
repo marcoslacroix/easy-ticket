@@ -25,21 +25,14 @@ router.post("/checking", UtilJsonWebToken.verifyToken, async function(req, res) 
         const _user = await UtilUser.getUserById(decoded.userId);
         UtilUser.validateUserRoles(_user, [RolesEnum.CHECKING_TICKET]);
 
-        const {uuid} = value;
+        const {uuid, event} = value;
         const _ticket = await UtilTicket.findTicketForChecking(uuid);
-
-        const _lots = await Lots.findOne({
-            where: {
-                id: _ticket.lots_id
-            }
-        });
+        const _lots = await UtilLots.findById(_ticket.lots_id);
         const _company = await UtilCompany.findByCompanyId(_lots.company_id);
+        const _event = await UtilEvent.findById(_lots.event_id);
         UtilCompany.validaUserHasAccessToCompany(_user, _company.id);
-
-        await _ticket.update({
-            is_used: true
-        })
-
+        UtilTicket.validateTicketIsSameEvent(_event, event);
+        UtilTicket.setIsUsed(_ticket, _event);
         res.status(200).json({message: "Entrada autorizada com sucesso!"});
     } catch(error) {
         console.error(error);
@@ -85,7 +78,7 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
             }
         }
 
-        res.status(200).json({ message: "Ingressos criado." });
+        res.status(200).json({ lote: _lots.id  });
 
     } catch (error) {
         console.error(error);
@@ -93,6 +86,29 @@ router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     }
 
 });
+
+router.patch("/change-status", UtilJsonWebToken.verifyToken, async function (req, res) {
+    try {
+        const queryParams = req.query;
+        const lotId = queryParams.lotId;
+        const status = queryParams.status;
+        const decoded = UtilJsonWebToken.decodeToken(req);
+        const _user = await UtilUser.getUserById(decoded.userId);
+        UtilUser.validateUserRoles(_user, [RolesEnum.UPDATE_LOTS]);
+        const _lots = await UtilLots.findById(lotId);
+        const _company = await UtilCompany.findByCompanyId(_lots.company_id);
+        UtilCompany.validaUserHasAccessToCompany(_user, _company.id);
+
+        _lots.update({
+            active: status
+        })
+        
+        res.status(200).json({});
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: error.message });
+    }
+})
 
 router.patch("/", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
