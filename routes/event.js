@@ -117,9 +117,6 @@ router.get("/", async function(req, res) {
     const currentDate = new Date();
     const currentDateFormatted = currentDate.toISOString().split('T')[0];
 
-    const page = parseInt(req.query.page) || 1; // Página atual (padrão: 1)
-    const pageSize = parseInt(req.query.pageSize) || 10; // Tamanho da página (padrão: 10)
-
     const _allEventsGreaterOrEqualCurrentDate = await Event.findAll({
         where: {
             [Op.or]: [
@@ -131,24 +128,9 @@ router.get("/", async function(req, res) {
                 }
             ]
         },
-        offset: (page - 1) * pageSize, // Calcula o deslocamento com base na página atual e no tamanho da página
-        limit: pageSize // Define o limite para o tamanho da página
+
     });
 
-    const totalElements = await Event.count({
-        where: {
-            [Op.or]: [
-                sequelize.where(sequelize.fn('DATE', sequelize.col('period')), currentDateFormatted),
-                {
-                    period: {
-                        [Op.gte]: currentDateFormatted
-                    }
-                }
-            ]
-        }
-    });
-    
-    const totalPages = Math.ceil(totalElements / pageSize);
 
     const events = [];
 
@@ -204,14 +186,17 @@ router.get("/", async function(req, res) {
             if (ticketMale.length > 0) {
                 const ticket = {
                     quantity: ticketMale.length,
-                    type: TicketType.FEMALE,
+                    type: TicketType.MALE,
                     price: ticketMale[0]?.price
                 }
                 tickets.push(ticket)
             }
             
             if (tickets.length > 0 ) {
-                lots.push(tickets)
+                lots.push({
+                    loteId: lote.id,
+                    tickets: tickets
+                });
             }
         }
 
@@ -230,7 +215,7 @@ router.get("/", async function(req, res) {
             event.id,
             event.name,
             event.period,
-            event.companyId,
+            event.company_id,
             event?.start?.substring(0, 5),
             event.description,
             event.image,
@@ -242,8 +227,6 @@ router.get("/", async function(req, res) {
     }
     res.status(200).json({
         events,
-        totalPages,
-        totalElements
     });
 })
 
