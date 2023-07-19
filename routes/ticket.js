@@ -3,17 +3,23 @@ const router = express.Router();
 const Joi = require('joi');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
 
+
+const UtilDate = require("../util/utilDate");
 const RolesEnum = require("../enum/RolesEnum");
 const UtilUser = require("../util/utilUser");
+const { Op, literal } = require('sequelize');
 const UtilCompany = require("../util/utilCompany");
+const moment = require("moment");
 const UtilTicket = require("../util/utilTicket")
 const UtilEvent = require("../util/utilEvent");
+const TicketType = require('../enum/TicketTypeEnum')
 const UtilLots = require("../util/utilLots");
 const Ticket = require("../models/ticket");
 const { v4: uuidv4 } = require('uuid');
 const Lots = require("../models/lots");
 const TicketStatusEnum = require("../enum/TicketStatusEnum");
 const TicketSchema = require("../schemaValidate/ticketSchema");
+const { ticketsCanceled } = require('../util/utilPayment');
 
 router.post("/checking", UtilJsonWebToken.verifyToken, async function(req, res) {
     try {
@@ -107,6 +113,113 @@ router.patch("/change-status", UtilJsonWebToken.verifyToken, async function (req
     } catch (error) {
         console.error(error);
         res.status(400).json({ error: error.message });
+    }
+})
+
+router.get("/available", async function(req, res) {
+    try {
+        const params = req.query;
+        const eventId = params.eventId;
+        const decoded = UtilJsonWebToken.decodeToken(req);
+        let quantityTicketsUserAlreadyBouthForThisEvent = 0;
+        let _user;
+        if (decoded) {
+            _user = await UtilUser.getUserById(decoded.userId);
+        }
+        if (_user) {
+            var lotsByEvent = await Lots.findAll({
+                where: {
+                    event_id: eventId
+                }
+            });
+            console.log(lotsByEvent);
+            var tickets = await Ticket.findAll({
+                where: {
+                    status: TicketStatusEnum.PAID,
+                    owner_user_id: _user.id,
+                    lots_id: {
+                        [Op.in]: lotsByEvent.map(it => it.id)
+                    }
+                }
+            })
+            if (tickets) {
+                quantityTicketsUserAlreadyBouthForThisEvent = tickets.length;
+            }
+        }
+
+        const _lots = await Lots.findAll({
+            where: {
+                active: true,
+                event_id: eventId,
+                [Op.and]: [
+                    { start_sales: { [Op.lte]: literal('CURRENT_DATE') } }, // Use CURRENT_DATE to compare with the start_sales column directly
+                    { end_sales: { [Op.gte]: literal('CURRENT_DATE') } } // Use CURRENT_DATE to compare with the end_sales column directly
+                  ]
+            }
+        })
+
+        let lots = [];
+
+        for (const lote of _lots) {
+            const lot = {
+                id: lote.id,
+                description: lote.description,
+                startsales: lote.start_sales,
+                endSales: lote.end_sales
+            }
+            const tickets = [];
+            const ticketFemale = await Ticket.findAll({
+                where: {
+                    type: TicketType.FEMALE,
+                    status: TicketStatusEnum.AVAILABLE,
+                    lots_id: lote.id
+                }
+            })
+
+            if (ticketFemale.length > 0) {
+                const ticket = {
+                    quantity: ticketFemale.length,
+                    type: TicketType.FEMALE,
+                    price: ticketFemale[0]?.price
+                }
+                tickets.push(ticket)
+            }
+
+            const ticketMale = await Ticket.findAll({
+                where: {
+                    type: TicketType.MALE,
+                    status: TicketStatusEnum.AVAILABLE,
+                    lots_id: lote.id
+                }
+            })
+
+            if (ticketMale.length > 0) {
+                const ticket = {
+                    quantity: ticketMale.length,
+                    type: TicketType.MALE,
+                    price: ticketMale[0]?.price
+                }
+                tickets.push(ticket)
+            }
+            
+            if (tickets.length > 0 ) {
+                lots.push({
+                    lot: lot,
+                    tickets: tickets
+                });
+            }
+        }
+
+        res.status(200).json(
+            {
+                lots,
+                quantityTicketsUserAlreadyBouthForThisEvent: quantityTicketsUserAlreadyBouthForThisEvent
+            }
+        )
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({error: error.message});
     }
 })
 

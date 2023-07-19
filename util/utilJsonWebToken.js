@@ -3,8 +3,11 @@ const jwt = require('jsonwebtoken');
 require("../util/utilJsonWebToken");
 
 function decodeToken(req) {
-    const token = getTokenFromHeader(req).replace('Bearer ', '');
-    return jwt.verify(token, process.env.SECRET_KEY);
+    let token = getTokenFromHeader(req);
+    if (token) {
+        token = token.replace('Bearer ', '');
+        return jwt.verify(token, process.env.SECRET_KEY);
+    }
 }
 
 function verifyToken(req, res, next) {

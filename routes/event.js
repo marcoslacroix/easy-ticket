@@ -4,20 +4,14 @@ const { Op } = require('sequelize');
 const { literal, fn, col } = require('sequelize');
 const { sequelize } = require('../config/database');
 const UtilJsonWebToken = require("../util/utilJsonWebToken");
-const Lots = require("../models/lots");
-const EventDTO = require("../dto/eventDto");
 const UtilUser = require("../util/utilUser");
-const Ticket = require('../models/ticket');
 const UtilCompany = require("../util/utilCompany");
 const Event = require("../models/event");
 const EventAddress = require("../models/event_address");
 const RolesEnum = require("../enum/RolesEnum");
 const EventSchema = require("../schemaValidate/eventSchema");
 const CompanyDocument = require("../models/company_document");
-const Company = require("../models/company");
-const EventAddressDto = require('../dto/eventAddressDto');
-const TicketType = require('../enum/TicketTypeEnum');
-const TicketStatusEnum = require('../enum/TicketStatusEnum');
+const UtilEvent = require("../util/utilEvent");
 
 
 router.post("/", UtilJsonWebToken.verifyToken, async function(req, res) {
@@ -131,99 +125,10 @@ router.get("/", async function(req, res) {
 
     });
 
-
     const events = [];
-
     for (const event of _allEventsGreaterOrEqualCurrentDate) {
-        const _eventAddress = await EventAddress.findOne( {
-            where: {
-                event_id: event.id
-            }
-        });
-
-        const _lots = await Lots.findAll({
-            where: {
-                active: true,
-                event_id: event.id,
-/*                 start_sales: {
-                    [Op.gte]: new Date()
-                },
-                end_sales: {
-                    [Op.lte]: new Date()
-                } */
-            }
-        })
-
-        let lots = [];
-
-        for (const lote of _lots) {
-            const tickets = [];
-            const ticketFemale = await Ticket.findAll({
-                where: {
-                    type: TicketType.FEMALE,
-                    status: TicketStatusEnum.AVAILABLE,
-                    lots_id: lote.id
-                }
-            })
-
-            if (ticketFemale.length > 0) {
-                const ticket = {
-                    quantity: ticketFemale.length,
-                    type: TicketType.FEMALE,
-                    price: ticketFemale[0]?.price
-                }
-                tickets.push(ticket)
-            }
-
-            const ticketMale = await Ticket.findAll({
-                where: {
-                    type: TicketType.MALE,
-                    status: TicketStatusEnum.AVAILABLE,
-                    lots_id: lote.id
-                }
-            })
-
-            if (ticketMale.length > 0) {
-                const ticket = {
-                    quantity: ticketMale.length,
-                    type: TicketType.MALE,
-                    price: ticketMale[0]?.price
-                }
-                tickets.push(ticket)
-            }
-            
-            if (tickets.length > 0 ) {
-                lots.push({
-                    loteId: lote.id,
-                    tickets: tickets
-                });
-            }
-        }
-
-        const eventAddress = new EventAddressDto(
-            _eventAddress.name,
-            _eventAddress.street,
-            _eventAddress.number,
-            _eventAddress.postal_code,
-            _eventAddress.neighborhood,
-            _eventAddress.city,
-            _eventAddress.state,
-            _eventAddress.acronymState,
-        );
-
-        const eventDTO = new EventDTO(
-            event.id,
-            event.name,
-            event.period,
-            event.company_id,
-            event?.start?.substring(0, 5),
-            event.description,
-            event.image,
-            eventAddress,
-            lots
-        );
-        
-        events.push(eventDTO);
+        const eventDto = await UtilEvent.parseEventDto(event);
+        events.push(eventDto);
     }
     res.status(200).json({
         events,

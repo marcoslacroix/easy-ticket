@@ -150,13 +150,13 @@ router.post('/webhook-card', async (req, res) => {
       const chargeId = lastStatus.identifiers.charge_id;
       const currentStatus = lastStatus.status.current;
       if (currentStatus == TicketStatusEnum.APPROVED) {
-        await UtilPayment.sendEmailTicketApproved({chargeId: chargeId});
+        //await UtilPayment.sendEmailTicketApproved({chargeId: chargeId});
       } else if (currentStatus == TicketStatusEnum.PAID) {
         const ticketsPaid = await UtilPayment.ticketsPaid({chargeId: chargeId});
-        await UtilPayment.sendEmailTicketConfirmed({ticketsPaid: ticketsPaid, amount: lastStatus.value, chargeId: chargeId});
+        //await UtilPayment.sendEmailTicketConfirmed({ticketsPaid: ticketsPaid, amount: lastStatus.value, chargeId: chargeId});
       } else if (currentStatus == TicketStatusEnum.CANCELED || currentStatus == TicketStatusEnum.REFUNDED || currentStatus == TicketStatusEnum.UNPAID) {
         const ticketsCanceled = await UtilPayment.ticketsCanceled({chargeId: chargeId});
-        await UtilPayment.sendEmailTicketsCanceled({ticketsCanceled: ticketsCanceled, chargeId: chargeId})
+        //await UtilPayment.sendEmailTicketsCanceled({ticketsCanceled: ticketsCanceled, chargeId: chargeId})
       } 
     }
     res.status(200).json({});
@@ -180,7 +180,7 @@ router.post('/webhook(/pix)?', async (req, res) => {
       console.log("cobranca.status: ", cobranca.status);
       if (cobranca.status == TicketStatusEnum.CONCLUIDA) {
         const ticketsPaid = await UtilPayment.ticketsPaid({txid: txid});
-        await UtilPayment.sendEmailTicketConfirmed({ticketsPaid: ticketsPaid, amount: cobranca.valor.original, txid: txid});
+        //await UtilPayment.sendEmailTicketConfirmed({ticketsPaid: ticketsPaid, amount: cobranca.valor.original, txid: txid});
       }
     }
     res.status(200).json({});
