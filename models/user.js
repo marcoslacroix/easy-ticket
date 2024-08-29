@@ -24,8 +24,8 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  companies: {
-    type: DataTypes.JSON,
+  company_id: {
+    type: DataTypes.INTEGER,
     allowNull: true,
   },
   email: {

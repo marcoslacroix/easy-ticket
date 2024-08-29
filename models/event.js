@@ -30,6 +30,10 @@ const Event = sequelize.define('Event', {
       type: DataTypes.DATE,
       allowNull: false
     },
+    quantity_ticket_sold: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     image: {
       type: DataTypes.BLOB,
       allowNull: true

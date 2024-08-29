@@ -29,7 +29,7 @@ const updateLotsSchema = Joi.object({
     })
 });
 
-const checkingSchema = Joi.object({
+const checkinSchema = Joi.object({
     uuid: Joi.string().required().messages(messages),
     event: Joi.number().required().messages(messages),
 });
@@ -37,5 +37,5 @@ const checkingSchema = Joi.object({
 module.exports = {
     createSchema,
     updateLotsSchema,
-    checkingSchema
+    checkinSchema
 }

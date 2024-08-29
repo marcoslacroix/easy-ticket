@@ -5,7 +5,7 @@ class Roles {
     
     static CREATE_TICKET = "CREATE_TICKET";
     static UPDATE_LOTS = "UPDATE_LOTS";
-    static CHECKING_TICKET = "CHECKING_TICKET";
+    static CHECKIN_TICKET = "CHECKIN_TICKET";
 
     static CREATE_EVENT = "CREATE_EVENT";
     static UPDATE_EVENT = "UPDATE_EVENT";

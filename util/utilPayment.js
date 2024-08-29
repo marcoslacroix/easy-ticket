@@ -11,13 +11,16 @@ const UtilTicket = require("../util/utilTicket");
 const EmailSend = require("../email/send");
 const User = require("../models/user");
 const Lots = require("../models/lots");
+const Event = require("../models/event");
+const UtilDate = require("../util/utilDate");
 const Charge = require("../models/charge");
 const DocumentTypeEnum = require("../enum/DocumentTypeEnum");
 const PaymentToken = require("../apis/paymentToken");
 
-async function getTicketsToPay(tickets, transaction, companyId) {
+async function getTicketsToPay(tickets, transaction, companyId, eventId) {
     const ticketsToPay = [];
     let totalPriceTickets = 0;
+    const currentDate = UtilDate.getDateFirstSecond(new Date());
     for (const ticket of tickets) {
       const _tickets = await Ticket.findAll({
         where: {
@@ -28,21 +31,38 @@ async function getTicketsToPay(tickets, transaction, companyId) {
         limit: ticket.quantity,
         lock: transaction.LOCK.UPDATE // Aplicar bloqueio pessimista na transação
       });
+
+      if (_tickets.length < ticket.quantity) {
+        throw new Error("Quantidade inserida de ingressos indisponível.")
+      }
       
       if (_tickets.length <= 0) {
         throw new Error("Ingressos esgotados ou indisponíveis.");
       } 
   
       for (const ticketToAdd of _tickets) {
-
+        
         const _lots = await Lots.findOne({
           where: {
             id: ticketToAdd.lots_id
           }
         })
+        
         if (!_lots || _lots.company_id != companyId) {
           throw new Error(`Esse ingresso: ${ticket.id} não percentence a empresa: ${companyId}`)
         }
+
+        if (_lots.event_id != eventId) {
+          throw new Error(`Esse ingresso: ${ticket.id} não é pertencido ao evento: ${eventId}`)
+        }
+
+        
+        // todo validar vendas de ingressos start_sales e end_sales
+/*         console.log("LotsStartSales: ", UtilDate.getDateFirstSecond(_lots.start_sales));
+        console.log("currentDate: ", currentDate);
+        if (currentDate < UtilDate.getDateFirstSecond(_lots.start_sales) || currentDate > UtilDate.getDateLastSecond(_lots.end_sales)) {
+          throw new Error('As vendas não estão disponíveis no momento ou já encerram as vendas.'); 
+        } */
 
         await ticketToAdd.update({
             status: TicketStatusEnum.PENDING
@@ -56,6 +76,14 @@ async function getTicketsToPay(tickets, transaction, companyId) {
         ticketsToPay,
         totalPriceTickets
     };
+  }
+
+  function getCurrentDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const day = today.getDate();
+    return new Date(`${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`);
   }
 
   async function updateTicketsToPedingOnQrCodeGenerate(ticketsToPay, txid ) {
@@ -310,9 +338,18 @@ async function getUserIdOnCharge({chargeId, txid}) {
     }
   }
 
+  async function validateQuantityTicketsUserAlreadyBought(_user, eventId, ticketsToPay) {
+    // todo finalizar esse metodo
+    var quantityTicketsUserAlreadyBougthForThisEvent = 0;
+    var tickets = UtilTicket.findAllTicketsUserBought(_user, eventId)
+    if (tickets) {
+        quantityTicketsUserAlreadyBougthForThisEvent = tickets.length;
+    }
+
+
+  }
 
   async function ticketsPaid({chargeId, txid}) {
-    console.log("chargeId: ", chargeId)
     const tickets = await Ticket.findAll({
       where: {
         charge_id: chargeId
@@ -329,7 +366,24 @@ async function getUserIdOnCharge({chargeId, txid}) {
         owner_user_id: userId,
         charge_id: chargeId,
         qr_code: qrCodeUrl
-      })
+      });
+
+      let lot = await Lots.findOne({
+        where: {
+          id: ticket.lots_id
+        }
+      });
+
+      await Event.increment(
+        'quantity_ticket_sold',
+        {
+          by: 1,
+          where: {
+            id: lot.event_id
+          }
+        }
+      );
+
     }
     return tickets;
   }
@@ -347,6 +401,23 @@ async function getUserIdOnCharge({chargeId, txid}) {
               owner_user_id: null,
               txid: null,
               charge_id: null
+            }
+          );
+
+          
+          let lot = await Lots.findOne({
+            where: {
+              id: _ticket.lots_id
+            }
+          });
+
+          await Event.decrement(
+            'quantity_ticket_sold',
+            {
+              by: 1,
+              where: {
+                id: lot.event_id
+              }
             }
           );
         }
@@ -405,13 +476,20 @@ async function getUserIdOnCharge({chargeId, txid}) {
   }
 
   async function parseDataOneStepCharge(payment, card, ticketsToPay, _company) {
-
-    const dataPaymentToken = await PaymentToken.getPaymentToken(process.env.GN_ACCOUNT_IDENTIFIER_PAYEE_CODE, card, isDebug);
-      
-    if (!dataPaymentToken || !dataPaymentToken.data || !dataPaymentToken.data.payment_token) {
-      throw new Error("Pagamento negado.")
+    if (card.expiration_year.length == 2) {
+      card.expiration_year = "20" + card.expiration_year;
     }
-    
+    const dataPaymentToken = await PaymentToken.getPaymentToken(process.env.GN_ACCOUNT_IDENTIFIER_PAYEE_CODE, card, isDebug);
+    if (!dataPaymentToken || !dataPaymentToken.data || !dataPaymentToken.data.payment_token) {
+      if (dataPaymentToken.error_description) {
+        throw new Error(dataPaymentToken.error_description)
+      } else {
+        throw new Error("Pagamento negado. Por favor, verifique as informações fornecidas.");
+      }
+    }
+
+
+    payment.credit_card.billing_address.zipcode = payment.credit_card.billing_address.zipcode.replace(/[-.]/g, "");
     payment.credit_card.customer.cpf = payment.credit_card.customer.cpf.replace(/[-.]/g, "");
     payment.credit_card.payment_token = dataPaymentToken.data.payment_token;
 
@@ -460,6 +538,7 @@ async function getUserIdOnCharge({chargeId, txid}) {
     parseSplitData,
     ticketsPaid,
     sendEmailTicketApproved,
+    validateQuantityTicketsUserAlreadyBought,
     parseDataOneStepCharge,
     parseCobData,
     ticketsToPending,

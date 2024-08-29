@@ -32,7 +32,7 @@ async function validateByIdentifierOrName(identifier) {
 }
 
 function validaUserHasAccessToCompany(user, companyId) {
-    const hasAccess = user?.companies?.includes(companyId);
+    const hasAccess = user.company_id == companyId;
     if (!hasAccess) {
         throw new Error("Usuário não tem acesso a essa empresa")
     }

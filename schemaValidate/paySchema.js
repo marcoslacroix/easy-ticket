@@ -3,6 +3,7 @@ const messages = require("../schemaValidate/messages");
 
 const ticketsPaymentByCard = Joi.object({
   company: Joi.number().required().messages(messages),
+  event: Joi.number().required().messages(messages),
   tickets: Joi.array().items(
     Joi.object({
       lots: Joi.number().required().messages(messages),
@@ -20,7 +21,7 @@ const ticketsPaymentByCard = Joi.object({
   }).required(),
   payment: Joi.object({
     credit_card: Joi.object({
-      installments: Joi.number().messages(messages),
+      installments: Joi.number().required().messages(messages),
       billing_address: Joi.object({
         street: Joi.string().required().messages(messages),
         number: Joi.number().required().messages(messages),
@@ -42,6 +43,7 @@ const ticketsPaymentByCard = Joi.object({
 
 const ticketsPayment = Joi.object({
   company: Joi.number().required().messages(messages),
+  event: Joi.number().required().messages(messages),
   tickets: Joi.array().items(
     Joi.object({
       lots: Joi.number().required().messages(messages),

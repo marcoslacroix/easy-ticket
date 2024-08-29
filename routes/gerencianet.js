@@ -18,6 +18,7 @@ const Queue = require("../queue/queue");
 const PaySchema = require("../schemaValidate/paySchema");
 const UtilCompany = require("../util/utilCompany");
 const UtilCompanyDocument = require("../util/utilCompanyDocument");
+const UtilEvent = require("../util/utilEvent");
 
 router.get("/getInstallments", UtilJsonWebToken.verifyToken, async (req, res) => {
   try {
@@ -29,7 +30,7 @@ router.get("/getInstallments", UtilJsonWebToken.verifyToken, async (req, res) =>
     const response = await gerencianet.getInstallments(params);
     res.status(200).json({"data": response.data});
   } catch (error) {
-    res.status(400).send({message: error.message});
+    res.status(400).send({error: error.message});
   }
 
 }) 
@@ -43,11 +44,13 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async (req, res) => {
       }
       const decoded = UtilJsonWebToken.decodeToken(req);
       const _user = await UtilUser.getUserByEmail(decoded.email);
-      const {company, tickets, card, payment } = value;
+      const {company, tickets, card, payment, event } = value;
       const _company = await UtilCompany.findByCompanyId(company);
       UtilCompany.validateGnAccountIdentifierPayeeCode(_company);
       validateEasyTicketGnAccountIdentifierToken();
-      const { ticketsToPay} = await UtilPayment.getTicketsToPay(tickets, t1, _company.id);
+
+      const { ticketsToPay} = await UtilPayment.getTicketsToPay(tickets, t1, _company.id, event);
+
       const gerencianet = new Gerencianet(options);
       const response = await gerencianet.createOneStepCharge([], await UtilPayment.parseDataOneStepCharge(payment, card, ticketsToPay, _company));
       await Charge.create({
@@ -62,9 +65,15 @@ router.post("/pay", UtilJsonWebToken.verifyToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     if (error.error_description) {
-      res.status(400).send({message: error.error_description});
+      if (error.error_description.message) {
+        res.status(400).send({error: error.error_description.message});
+
+      } else {
+        res.status(400).send({error: error.error_description});
+
+      }
     } else {
-      res.status(400).send({message: error.message});
+      res.status(400).send({error: error.message});
     }
   }
   
@@ -99,11 +108,13 @@ router.post('/getQrCode', UtilJsonWebToken.verifyToken, async (req, res) => {
       }
       const decoded = UtilJsonWebToken.decodeToken(req);
       const _user = await UtilUser.getUserByEmail(decoded.email);
-      const {tickets, company} = value;
+      const {company, event ,tickets} = value;
       const _company = await UtilCompany.findByCompanyId(company);
+      await UtilEvent.findById(event);
       UtilCompany.validateGnAccount(_company);
+      const { ticketsToPay, totalPriceTickets } = await UtilPayment.getTicketsToPay(tickets, t1, _company.id, event);
+      UtilPayment.validateQuantityTicketsUserAlreadyBought(_user, event, ticketsToPay);
       const companyDocument = await UtilCompanyDocument.findByCompany(company);
-      const { ticketsToPay, totalPriceTickets } = await UtilPayment.getTicketsToPay(tickets, t1, _company.id);
       const cobResponse = await reqGN.post('/v2/cob', UtilPayment.parseCobData(totalPriceTickets));
       const txid = cobResponse.data.txid;
       await Charge.create({
@@ -121,10 +132,10 @@ router.post('/getQrCode', UtilJsonWebToken.verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error:', error);
     if (error?.data?.mensagem) {
-      res.status(400).send({message: error?.data?.mensagem});
+      res.status(400).send({error: error?.data?.mensagem});
       return;
     }
-    res.status(400).send({message: error.message})
+    res.status(400).send({error: error.message})
   }
 });
 
@@ -149,8 +160,9 @@ router.post('/webhook-card', async (req, res) => {
       const lastStatus = response.data[response.data.length - 1];
       const chargeId = lastStatus.identifiers.charge_id;
       const currentStatus = lastStatus.status.current;
+      console.log("currentStatus: ", currentStatus);
       if (currentStatus == TicketStatusEnum.APPROVED) {
-        //await UtilPayment.sendEmailTicketApproved({chargeId: chargeId});
+        await UtilPayment.sendEmailTicketApproved({chargeId: chargeId});
       } else if (currentStatus == TicketStatusEnum.PAID) {
         const ticketsPaid = await UtilPayment.ticketsPaid({chargeId: chargeId});
         //await UtilPayment.sendEmailTicketConfirmed({ticketsPaid: ticketsPaid, amount: lastStatus.value, chargeId: chargeId});

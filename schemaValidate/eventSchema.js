@@ -4,9 +4,6 @@ const messages = require("../schemaValidate/messages");
 
 
 const createSchema = Joi.object({
-    company: Joi.object({
-        id: Joi.number().required()
-    }).required(),
     event: Joi.object({
         name: Joi.string().required().messages(messages),
         period: Joi.date().required().messages(messages),
@@ -16,7 +13,7 @@ const createSchema = Joi.object({
             name: Joi.string().required().messages(messages),
             street: Joi.string().required().messages(messages),
             number: Joi.string().required().messages(messages),
-            postal_code: Joi.string().required().messages(messages),
+            postalCode: Joi.string().required().messages(messages),
             neighborhood: Joi.string().required().messages(messages),
             city: Joi.string().required().messages(messages),
             state: Joi.string().required().messages(messages),

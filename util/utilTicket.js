@@ -1,8 +1,10 @@
 const Ticket = require('../models/ticket')
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
+const TicketStatusEnum = require("../enum/TicketStatusEnum");
+const Lots = require("../models/lots");
 
-async function findTicketForChecking(uuid) {
+async function findTicketForCheckin(uuid) {
   try {
     const ticket = await Ticket.findOne({
       where: {
@@ -11,8 +13,8 @@ async function findTicketForChecking(uuid) {
         is_used: false
       }
     });
-    if (!_ticket) {
-      throw new Error("Ingresso não localizado ou já foi utilizado.") 
+    if (!ticket) {
+      throw new Error("Desculpe, o ingresso não foi encontrado ou já foi utilizado.")
     }
     return ticket;
   } catch(error) {
@@ -20,10 +22,23 @@ async function findTicketForChecking(uuid) {
   }
 }
 
-function validateTicketIsSameEvent(_event, event) {
-  if (_event.id != event) {
-    throw new Error("Não é possível fazer o checking de outro evento.");
-  }
+async function findAllTicketsUserBought(_user, eventId) {
+  var lotsByEvent = await Lots.findAll({
+    where: {
+        event_id: eventId
+    }
+  });
+  var tickets = await Ticket.findAll({
+    where: {
+        status: TicketStatusEnum.PAID,
+        owner_user_id: _user.id,
+        lots_id: {
+            [Op.in]: lotsByEvent.map(it => it.id)
+        }
+    }
+  })
+
+  return tickets;
 }
 
 async function setIsUsed(_ticket) {
@@ -75,8 +90,8 @@ async function findOneById(id) {
 module.exports = {
   findAllByIds,
   findOneById,
-  validateTicketIsSameEvent,
   setIsUsed,
-  findTicketForChecking,  
+  findTicketForCheckin,  
+  findAllTicketsUserBought,
   generateQRCode
 }
